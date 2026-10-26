@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar,
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Tabular numerals for monetary & spec clarity */
+.tnum {
+  font-feature-settings: "tnum";
+}
+
+/* Material Symbols fill adjustment */
+.material-symbols-fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+/* Custom CSS Component Classes coexisting with Tailwind */
+@layer components {
+  /* Primary Action Button */
+  .btn-primary {
+    @apply h-11 px-6 rounded-[10px] bg-primary text-on-primary font-title text-title flex items-center justify-center gap-2 transition-all hover:opacity-95 shadow-sm;
+  }
+
+  /* Secondary Outline Button */
+  .btn-outline {
+    @apply h-11 px-6 rounded-[10px] border border-outline-variant/60 text-on-surface hover:bg-surface-container-low transition-colors font-title text-title flex items-center justify-center gap-2;
+  }
+
+  /* Glassmorphism Header */
+  .glass-nav {
+    @apply bg-surface/85 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_1px_8px_rgba(0,0,0,0.04)];
+  }
+
+  /* Standard Card Container */
+  .surface-card {
+    @apply rounded-[14px] bg-surface-container-lowest border border-outline-variant/30 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)];
+  }
+
+  /* Interactive Car Card */
+  .car-card-hover {
+    @apply transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer;
+  }
+
+  /* Filter Tag Pill */
+  .filter-pill {
+    @apply shrink-0 px-4 py-2 rounded-full font-label-md text-label-md transition-colors flex items-center gap-1.5;
+  }
+}
+
