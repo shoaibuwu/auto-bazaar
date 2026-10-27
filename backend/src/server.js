@@ -13,14 +13,18 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-// Connect to MongoDB and start server
+// Connect to MongoDB and start serverz
 const startServer = async () => {
   try {
     await connectDB();
 
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running in ${process.env.NODE_ENV || "development"} mode on http://localhost:${PORT}`);
-      console.log(`🩺 Health check available at: http://localhost:${PORT}/api/v1/health`);
+      console.log(
+        `🚀 Server running in ${process.env.NODE_ENV || "development"} mode on http://localhost:${PORT}`,
+      );
+      console.log(
+        `🩺 Health check available at: http://localhost:${PORT}/api/v1/health`,
+      );
     });
 
     // Handle unhandled promise rejections
