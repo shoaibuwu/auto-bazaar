@@ -25,3 +25,8 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# Uploaded media files
+backend/public/uploads/cars/*
+!backend/public/uploads/cars/.gitkeep
+
