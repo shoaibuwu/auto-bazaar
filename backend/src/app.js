@@ -10,6 +10,7 @@ import healthRouter from "./routes/health.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 import carRouter from "./routes/car.routes.js";
+import adminRouter from "./routes/admin.routes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -72,6 +73,7 @@ app.use("/api/v1", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/cars", carRouter);
+app.use("/api/v1/admin", adminRouter);
 
 // Catch-all 404 handler
 app.use(notFound);
