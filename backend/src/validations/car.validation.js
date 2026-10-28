@@ -66,3 +66,24 @@ const normalizeCarInput = (data) => {
 
 export const createCarSchema = z.preprocess(normalizeCarInput, baseCarSchema);
 export const updateCarSchema = z.preprocess(normalizeCarInput, baseCarSchema.partial());
+
+export const searchCarsQuerySchema = z.object({
+  search: z.string().trim().optional(),
+  make: z.string().trim().optional(),
+  model: z.string().trim().optional(),
+  fuelType: z.enum(["petrol", "diesel", "electric", "hybrid"]).optional(),
+  transmission: z.enum(["automatic", "manual"]).optional(),
+  condition: z.enum(["new", "used"]).optional(),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
+  minYear: z.coerce.number().int().min(1900).optional(),
+  maxYear: z.coerce.number().int().optional(),
+  maxMileage: z.coerce.number().min(0).optional(),
+  sort: z
+    .enum(["newest", "oldest", "price_asc", "price_desc", "mileage_asc", "year_desc"])
+    .default("newest")
+    .optional(),
+  page: z.coerce.number().int().min(1).default(1).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(10).optional(),
+});
+

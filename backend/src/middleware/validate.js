@@ -19,8 +19,17 @@ const validate = (schema, source = "body") => {
       return next(new ApiError(400, "Validation failed", formattedErrors));
     }
 
-    // Replace req[source] with sanitized, parsed data
-    req[source] = result.data;
+    // Replace req[source] with sanitized, parsed data (safe for Express 5 getters)
+    if (source === "query" || source === "params") {
+      Object.defineProperty(req, source, {
+        value: result.data,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    } else {
+      req[source] = result.data;
+    }
     next();
   };
 };
