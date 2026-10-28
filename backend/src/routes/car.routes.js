@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getPublicCars,
   createCar,
   getMyListings,
   getCarById,
@@ -17,11 +18,20 @@ import validate from "../middleware/validate.js";
 import {
   createCarSchema,
   updateCarSchema,
+  searchCarsQuerySchema,
 } from "../validations/car.validation.js";
 
 const router = Router();
 
-// All car management routes below require authentication
+// ==========================================
+// PUBLIC ROUTES (No login required for shoppers)
+// ==========================================
+router.get("/", validate(searchCarsQuerySchema, "query"), getPublicCars);
+router.get("/:id", getCarById);
+
+// ==========================================
+// PROTECTED ROUTES (Requires login)
+// ==========================================
 router.use(authenticate);
 
 // Seller listing routes
@@ -34,8 +44,6 @@ router.post(
 );
 
 router.get("/my-listings", getMyListings);
-
-router.get("/:id", getCarById);
 
 router.patch(
   "/:id",

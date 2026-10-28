@@ -11,6 +11,8 @@ import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 import carRouter from "./routes/car.routes.js";
 import adminRouter from "./routes/admin.routes.js";
+import favoriteRouter from "./routes/favorite.routes.js";
+import inquiryRouter from "./routes/inquiry.routes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -74,6 +76,8 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/cars", carRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/favorites", favoriteRouter);
+app.use("/api/v1/inquiries", inquiryRouter);
 
 // Catch-all 404 handler
 app.use(notFound);

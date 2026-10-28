@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from "./user.model.js";
 
 const carSchema = new mongoose.Schema(
   {
@@ -84,9 +85,12 @@ const carSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for fast querying in search (Week 7 preview)
+// Indexes for fast querying in search (Compound indexes with status: 'published')
 carSchema.index({ status: 1, createdAt: -1 });
 carSchema.index({ seller: 1, status: 1 });
+carSchema.index({ status: 1, price: 1 });
+carSchema.index({ status: 1, make: 1, model: 1 });
+carSchema.index({ status: 1, year: -1 });
 
 const Car = mongoose.model("Car", carSchema);
 
