@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
 import AuthModal from "./components/auth/AuthModal";
 import HomePage from "./pages/HomePage";
 import CarDetailsPage from "./pages/CarDetailsPage";
+import SellCarPage from "./pages/SellCarPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
 export default function App() {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   // Theme state (Dark/Light mode)
@@ -89,11 +91,14 @@ export default function App() {
   // Mobile Bottom Navigation handler
   const handleMobileNavChange = (tabId) => {
     setActiveMobileTab(tabId);
-    if (tabId === "account") {
+    if (tabId === "sell") {
+      navigate("/sell");
+    } else if (tabId === "account") {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
       }
     } else if (tabId === "browse") {
+      navigate("/");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -133,6 +138,10 @@ export default function App() {
                 onOpenAuth={() => setIsAuthModalOpen(true)}
               />
             }
+          />
+          <Route
+            path="/sell"
+            element={<SellCarPage onOpenAuth={() => setIsAuthModalOpen(true)} />}
           />
         </Routes>
       </main>

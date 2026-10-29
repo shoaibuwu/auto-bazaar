@@ -58,12 +58,12 @@ export default function Header({
           >
             Inspections
           </a>
-          <a
+          <Link
             className="px-4 py-1.5 rounded-full font-medium text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#sell"
+            to="/sell"
           >
             Sell Your Car
-          </a>
+          </Link>
           <a
             className="px-4 py-1.5 rounded-full font-medium text-on-surface-variant hover:text-on-surface transition-colors"
             href="#price-guide"
@@ -153,14 +153,14 @@ export default function Header({
 
                     <div className="py-1">
                       {user.role === "seller" && (
-                        <a
-                          href="#my-listings"
+                        <Link
+                          to="/sell?tab=listings"
                           onClick={() => setIsDropdownOpen(false)}
                           className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
                         >
                           <span className="material-symbols-outlined text-base">garage</span>
                           My Listings
-                        </a>
+                        </Link>
                       )}
 
                       {user.role === "admin" && (

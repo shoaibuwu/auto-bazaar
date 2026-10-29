@@ -87,3 +87,58 @@ export const getCarById = async (carId) => {
 export const sendCarInquiry = async (carId, { message, phoneNumber = "" }) => {
   return await api.post(`/inquiries/${carId}`, { message, phoneNumber });
 };
+
+/**
+ * Create a new car listing (Sends multipart/form-data with photos)
+ */
+export const createCar = async (formData) => {
+  const response = await api.post("/cars", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  if (response.success && response.data?.car) {
+    return formatCar(response.data.car);
+  }
+  throw new Error(response.message || "Failed to create vehicle listing");
+};
+
+/**
+ * Fetch all cars owned by the currently logged-in seller
+ */
+export const getMyListings = async () => {
+  const response = await api.get("/cars/my-listings");
+  if (response.success && response.data?.cars) {
+    return response.data.cars.map(formatCar);
+  }
+  return [];
+};
+
+/**
+ * Submit a draft car for admin review
+ */
+export const submitCarForReview = async (carId) => {
+  const response = await api.patch(`/cars/${carId}/submit`);
+  if (response.success && response.data?.car) {
+    return formatCar(response.data.car);
+  }
+  throw new Error(response.message || "Failed to submit car for review");
+};
+
+/**
+ * Mark a published vehicle as sold
+ */
+export const markCarAsSold = async (carId) => {
+  const response = await api.patch(`/cars/${carId}/sold`);
+  if (response.success && response.data?.car) {
+    return formatCar(response.data.car);
+  }
+  throw new Error(response.message || "Failed to mark vehicle as sold");
+};
+
+/**
+ * Delete a draft or rejected vehicle listing
+ */
+export const deleteCar = async (carId) => {
+  return await api.delete(`/cars/${carId}`);
+};
