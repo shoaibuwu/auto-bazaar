@@ -49,15 +49,21 @@ const baseCarSchema = z.object({
       z.enum(["new", "used"]).default("used")
     )
     .optional(),
+  city: z.string().trim().optional().default("Lahore"),
+  bodyType: z.string().trim().optional().default("sedan"),
   description: z.string().trim().optional().default(""),
 });
 
-// Normalize keys (e.g. support both 'fuelType' and 'fueltype')
+// Normalize keys and auto-generate title if missing
 const normalizeCarInput = (data) => {
   if (data && typeof data === "object") {
     const normalized = { ...data };
     if (!normalized.fuelType && normalized.fueltype) {
       normalized.fuelType = normalized.fueltype;
+    }
+    // Auto-generate title if missing but make and model exist
+    if (!normalized.title && (normalized.make || normalized.model)) {
+      normalized.title = `${normalized.year || ""} ${normalized.make || ""} ${normalized.model || ""}`.trim();
     }
     return normalized;
   }

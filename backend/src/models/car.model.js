@@ -56,6 +56,16 @@ const carSchema = new mongoose.Schema(
       enum: ["new", "used"],
       default: "used",
     },
+    city: {
+      type: String,
+      trim: true,
+      default: "Lahore",
+    },
+    bodyType: {
+      type: String,
+      trim: true,
+      default: "sedan",
+    },
     description: {
       type: String,
       trim: true,
