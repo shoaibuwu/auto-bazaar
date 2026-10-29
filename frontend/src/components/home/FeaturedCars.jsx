@@ -1,8 +1,10 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function FeaturedCars({
   cars = [],
   favorites = new Set(),
+  isLoading = false,
   onToggleFavorite,
   onResetFilters
 }) {
@@ -15,31 +17,50 @@ export default function FeaturedCars({
             Featured cars
           </h2>
           <span className="font-body-sm text-body-sm text-on-surface-variant">
-            Showing {cars.length} handpicked verified vehicles
+            {isLoading
+              ? "Fetching live inventory from database..."
+              : `Showing ${cars.length} verified vehicle${cars.length === 1 ? "" : "s"} from database`}
           </span>
         </div>
         <a
           className="font-title text-body-md text-on-surface hover:text-primary transition-colors flex items-center gap-1 font-medium group"
           href="#browse"
         >
-          <span>View all 1,420 cars</span>
+          <span>View all {cars.length} verified cars</span>
           <span className="material-symbols-outlined text-base transition-transform group-hover:translate-x-1">
             arrow_forward
           </span>
         </a>
       </div>
 
-      {/* Empty State */}
-      {cars.length === 0 ? (
+      {/* Loading Skeletons */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-md md:gap-space-lg">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className="rounded-[14px] bg-surface-container-lowest border border-outline-variant/30 overflow-hidden shadow-sm animate-pulse"
+            >
+              <div className="w-full aspect-[3/2] bg-surface-container/70" />
+              <div className="p-4 space-y-3">
+                <div className="h-5 w-3/4 rounded bg-surface-container/80" />
+                <div className="h-6 w-1/2 rounded bg-surface-container/60" />
+                <div className="h-4 w-full rounded bg-surface-container/40" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : cars.length === 0 ? (
+        /* Empty State */
         <div className="w-full py-16 px-4 bg-surface-container-lowest rounded-[14px] border border-outline-variant/30 text-center flex flex-col items-center justify-center">
           <span className="material-symbols-outlined text-5xl text-outline mb-3">
-            search_off
+            directions_car
           </span>
           <h3 className="font-headline-sm text-headline-sm font-semibold text-on-surface mb-1">
-            No matching cars found
+            No cars found in database
           </h3>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-md mb-4">
-            Try adjusting your search criteria, selecting a different city, or clearing the body type filter.
+            There are currently no matching published cars in MongoDB. You can adjust your filters or add a new car through the seller portal.
           </p>
           <button
             type="button"
@@ -56,9 +77,10 @@ export default function FeaturedCars({
             const isFav = favorites.has(car.id);
 
             return (
-              <article
+              <Link
                 key={car.id}
-                className="car-listing-card group flex flex-col rounded-[14px] bg-surface-container-lowest shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] border border-outline-variant/30 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer"
+                to={`/cars/${car.id}`}
+                className="car-listing-card group flex flex-col rounded-[14px] bg-surface-container-lowest shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] border border-outline-variant/30 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer text-left block"
               >
                 {/* Image & Badges Container */}
                 <div className="relative w-full aspect-[3/2] overflow-hidden bg-surface-container">
@@ -71,11 +93,11 @@ export default function FeaturedCars({
 
                   {/* Verification Badge */}
                   {car.isVerified && (
-                    <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary font-label-sm text-label-sm font-semibold tracking-wide flex items-center gap-1 shadow-sm">
-                      <span className="material-symbols-outlined text-sm leading-none text-primary">
-                        verified
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-emerald-600 dark:text-emerald-400 font-label-sm text-[11px] font-semibold tracking-wide flex items-center gap-1 shadow-sm border border-outline-variant/30">
+                      <span className="material-symbols-outlined text-sm leading-none text-emerald-500">
+                        check_circle
                       </span>
-                      Verified {car.inspectionScore}
+                      Certified
                     </div>
                   )}
 
@@ -84,6 +106,7 @@ export default function FeaturedCars({
                     aria-label="Save to favorites"
                     type="button"
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onToggleFavorite(car.id);
                     }}
@@ -116,7 +139,7 @@ export default function FeaturedCars({
                     {car.year} • {car.mileage} • {car.fuel} • {car.city}
                   </p>
                 </div>
-              </article>
+              </Link>
             );
           })}
         </div>
