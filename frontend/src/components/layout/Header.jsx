@@ -70,6 +70,15 @@ export default function Header({
           >
             Price Guide
           </a>
+          {user?.role === "admin" && (
+            <Link
+              className="px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider text-amber-500 hover:bg-amber-500/10 transition-colors flex items-center gap-1 border border-amber-500/30"
+              to="/admin"
+            >
+              <span className="material-symbols-outlined text-sm">shield_person</span>
+              Admin Queue
+            </Link>
+          )}
         </nav>
 
         {/* Right Action Icons & Profile */}
@@ -164,15 +173,24 @@ export default function Header({
                       )}
 
                       {user.role === "admin" && (
-                        <a
-                          href="#admin-panel"
+                        <Link
+                          to="/admin"
                           onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         >
                           <span className="material-symbols-outlined text-base">admin_panel_settings</span>
                           Moderation Queue
-                        </a>
+                        </Link>
                       )}
+
+                      <Link
+                        to="/inquiries"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">forum</span>
+                        Inquiries & Messages
+                      </Link>
 
                       <a
                         href="#favorites"

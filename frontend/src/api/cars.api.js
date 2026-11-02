@@ -32,6 +32,10 @@ export const formatCar = (car) => {
     images: (car.images || []).map((img) => (img.startsWith("http") ? img : `${BACKEND_BASE}${img}`)),
     description: car.description || "",
     seller: car.seller || null,
+    status: car.status || "published",
+    rejectionReason: car.rejectionReason || "",
+    createdAt: car.createdAt || null,
+    updatedAt: car.updatedAt || null,
   };
 };
 
@@ -85,7 +89,7 @@ export const getCarById = async (carId) => {
  * Send an inquiry message to the car's seller
  */
 export const sendCarInquiry = async (carId, { message, phoneNumber = "" }) => {
-  return await api.post(`/inquiries/${carId}`, { message, phoneNumber });
+  return await api.post(`/inquiries/${carId}`, { message, phone: phoneNumber });
 };
 
 /**

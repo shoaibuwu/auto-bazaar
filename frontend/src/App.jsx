@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import MobileBottomNav from "./components/layout/MobileBottomNav";
@@ -7,15 +7,44 @@ import AuthModal from "./components/auth/AuthModal";
 import HomePage from "./pages/HomePage";
 import CarDetailsPage from "./pages/CarDetailsPage";
 import SellCarPage from "./pages/SellCarPage";
+import AdminModerationPage from "./pages/AdminModerationPage";
+import InquiriesPage from "./pages/InquiriesPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  // Theme state (Dark/Light mode)
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Check if current route is within Admin console
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
+  // Theme state initialized from localStorage or system preference
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem("autobazaar_theme");
+    if (saved) return saved === "dark";
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  // Keep <html> element classes and localStorage in sync whenever isDarkMode changes
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+      root.classList.remove("light");
+      localStorage.setItem("autobazaar_theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+      localStorage.setItem("autobazaar_theme", "light");
+    }
+  }, [isDarkMode]);
+
+  // Pure toggle handler
+  const handleToggleTheme = () => {
+    setIsDarkMode((prev) => !prev);
+  };
 
   // Auth modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -25,19 +54,6 @@ export default function App() {
 
   // Active mobile bottom nav tab
   const [activeMobileTab, setActiveMobileTab] = useState("browse");
-
-  // Sync theme with document element
-  const handleToggleTheme = () => {
-    setIsDarkMode((prev) => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      return next;
-    });
-  };
 
   // Sync user favorites from MongoDB when logged in
   const loadUserFavorites = useCallback(async () => {
@@ -104,21 +120,23 @@ export default function App() {
   };
 
   return (
-    <div className="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col transition-colors duration-200">
-      {/* Top Header */}
-      <Header
-        favoritesCount={favorites.size}
-        isDarkMode={isDarkMode}
-        onToggleTheme={handleToggleTheme}
-        onOpenSearch={() => {
-          const input = document.getElementById("car-query");
-          if (input) input.focus();
-        }}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-      />
+    <div className={`font-body-md antialiased min-h-screen flex flex-col transition-colors duration-200 ${isAdminRoute ? "bg-slate-50 dark:bg-[#0B0F1A] text-slate-800 dark:text-slate-200" : "bg-background text-on-surface"}`}>
+      {/* Consumer Header (Hidden on Admin Console) */}
+      {!isAdminRoute && (
+        <Header
+          favoritesCount={favorites.size}
+          isDarkMode={isDarkMode}
+          onToggleTheme={handleToggleTheme}
+          onOpenSearch={() => {
+            const input = document.getElementById("car-query");
+            if (input) input.focus();
+          }}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+        />
+      )}
 
       {/* Main Content Area */}
-      <main className="w-full pt-16 bg-background min-h-screen pb-16 md:pb-0 flex-1 transition-colors duration-200">
+      <main className={`w-full min-h-screen flex-1 transition-colors duration-200 ${isAdminRoute ? "" : "pt-16 pb-16 md:pb-0 bg-background"}`}>
         <Routes>
           <Route
             path="/"
@@ -143,18 +161,34 @@ export default function App() {
             path="/sell"
             element={<SellCarPage onOpenAuth={() => setIsAuthModalOpen(true)} />}
           />
+          <Route
+            path="/admin"
+            element={
+              <AdminModerationPage
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+                isDarkMode={isDarkMode}
+                onToggleTheme={handleToggleTheme}
+              />
+            }
+          />
+          <Route
+            path="/inquiries"
+            element={<InquiriesPage onOpenAuth={() => setIsAuthModalOpen(true)} />}
+          />
         </Routes>
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Consumer Footer (Hidden on Admin Console) */}
+      {!isAdminRoute && <Footer />}
 
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav
-        favoritesCount={favorites.size}
-        activeTab={activeMobileTab}
-        onTabChange={handleMobileNavChange}
-      />
+      {/* Mobile Bottom Navigation (Hidden on Admin Console) */}
+      {!isAdminRoute && (
+        <MobileBottomNav
+          favoritesCount={favorites.size}
+          activeTab={activeMobileTab}
+          onTabChange={handleMobileNavChange}
+        />
+      )}
 
       {/* Authentication Modal */}
       <AuthModal
