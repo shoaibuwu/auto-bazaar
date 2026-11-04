@@ -43,3 +43,12 @@ export async function rejectCar(carId, reason) {
   const response = await client.patch(`/admin/cars/${carId}/reject`, { reason });
   return response?.data?.car || response?.car;
 }
+
+/**
+ * Permanently delete a car listing entity from MongoDB (Admin only)
+ * Calls: DELETE /api/v1/admin/cars/:id
+ */
+export async function deleteCarByAdmin(carId) {
+  const response = await client.delete(`/admin/cars/${carId}`);
+  return response?.data || response;
+}

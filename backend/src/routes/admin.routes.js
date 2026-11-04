@@ -4,6 +4,7 @@ import {
   getAllCars,
   approveCar,
   rejectCar,
+  deleteCarByAdmin,
 } from "../controllers/admin.controller.js";
 import {
   authenticate,
@@ -22,5 +23,6 @@ router.get("/cars/pending", getPendingCars);
 router.get("/cars", getAllCars);
 router.patch("/cars/:id/approve", approveCar);
 router.patch("/cars/:id/reject", validate(rejectCarSchema), rejectCar);
+router.delete("/cars/:id", deleteCarByAdmin);
 
 export default router;
