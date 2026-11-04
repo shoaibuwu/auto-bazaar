@@ -66,7 +66,7 @@ export const getAllCars = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Approve car listing (Status transition: pending_review -> published)
+ * @desc    Approve or reactivate car listing (Status transition: pending_review | rejected -> published)
  * @route   PATCH /api/v1/admin/cars/:id/approve
  * @access  Private (Admin only)
  */
@@ -77,10 +77,11 @@ export const approveCar = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Car listing not found");
   }
 
-  if (car.status !== "pending_review") {
+  // Admins can approve newly submitted cars OR reactivate previously suspended/rejected cars
+  if (car.status !== "pending_review" && car.status !== "rejected") {
     throw new ApiError(
       400,
-      `Cannot approve listing in '${car.status}' status. Only cars in 'pending_review' can be approved.`
+      `Cannot approve listing in '${car.status}' status. Only cars in 'pending_review' or 'rejected' can be approved.`
     );
   }
 
@@ -98,7 +99,7 @@ export const approveCar = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Reject car listing with reason (Status transition: pending_review -> rejected)
+ * @desc    Reject or delist car listing with reason (Status transition: pending_review | published -> rejected)
  * @route   PATCH /api/v1/admin/cars/:id/reject
  * @access  Private (Admin only)
  */
@@ -110,10 +111,11 @@ export const rejectCar = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Car listing not found");
   }
 
-  if (car.status !== "pending_review") {
+  // Admins can reject submissions OR delist/suspend active published listings
+  if (car.status !== "pending_review" && car.status !== "published") {
     throw new ApiError(
       400,
-      `Cannot reject listing in '${car.status}' status. Only cars in 'pending_review' can be rejected.`
+      `Cannot reject or delist listing in '${car.status}' status. Only cars in 'pending_review' or 'published' can be sanctioned.`
     );
   }
 
@@ -125,7 +127,26 @@ export const rejectCar = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       { car },
-      "Car listing rejected with reason provided"
+      "Car listing delisted/rejected with reason provided"
     )
+  );
+});
+
+/**
+ * @desc    Permanently delete car listing entity (Superuser action)
+ * @route   DELETE /api/v1/admin/cars/:id
+ * @access  Private (Admin only)
+ */
+export const deleteCarByAdmin = asyncHandler(async (req, res) => {
+  const car = await Car.findById(req.params.id);
+
+  if (!car) {
+    throw new ApiError(404, "Car listing not found");
+  }
+
+  await car.deleteOne();
+
+  return res.status(200).json(
+    new ApiResponse(200, null, "Car listing entity permanently deleted by admin")
   );
 });

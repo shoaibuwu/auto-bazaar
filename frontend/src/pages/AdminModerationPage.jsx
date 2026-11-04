@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
 import { useAuth } from "../context/AuthContext";
-import { getAllPlatformCars, approveCar, rejectCar } from "../api/admin.api";
+import { getAllPlatformCars, approveCar, rejectCar, deleteCarByAdmin } from "../api/admin.api";
 import { formatCar } from "../api/cars.api";
 
 // Preset violation categories matching the reference modal
@@ -49,6 +49,9 @@ export default function AdminModerationPage({
   const [modalDelistToggle, setModalDelistToggle] = useState(true);
   const [modalNotifyToggle, setModalNotifyToggle] = useState(true);
   const [modalError, setModalError] = useState("");
+
+  // Delete Modal State (Custom UI Popup)
+  const [deleteModalCar, setDeleteModalCar] = useState(null);
 
   // Inspect Photo Modal
   const [inspectCar, setInspectCar] = useState(null);
@@ -210,15 +213,47 @@ export default function AdminModerationPage({
         )
       );
 
+      const isDelisting = modalCar.status === "published";
       setActionNotice({
         type: "info",
-        message: `Listing "${modalCar.title}" has been suspended/rejected. Notification dispatched.`,
+        message: `Listing "${modalCar.title}" has been ${
+          isDelisting ? "delisted and hidden from public marketplace" : "rejected and moved to hold"
+        }. Notification dispatched.`,
       });
 
       closeSanctionModal();
       setTimeout(() => setActionNotice(null), 5000);
     } catch (err) {
       setModalError(err.message || "Failed to submit sanction.");
+    } finally {
+      setProcessingCarId(null);
+    }
+  };
+
+  // Master Delete Listing by Admin (Permanent Removal)
+  const handleConfirmDeleteByAdmin = async () => {
+    if (!deleteModalCar) return;
+
+    try {
+      setProcessingCarId(deleteModalCar.id);
+      await deleteCarByAdmin(deleteModalCar.id);
+
+      // Remove car completely from local dataset
+      setAllCars((prev) => prev.filter((item) => item.id !== deleteModalCar.id));
+
+      setActionNotice({
+        type: "info",
+        message: `Listing "${deleteModalCar.title}" has been permanently deleted from database.`,
+      });
+      setDeleteModalCar(null);
+      setTimeout(() => setActionNotice(null), 5000);
+    } catch (err) {
+      console.error("Failed to delete listing by admin:", err);
+      setActionNotice({
+        type: "error",
+        message: err.message || "Failed to delete listing.",
+      });
+      setTimeout(() => setActionNotice(null), 5000);
     } finally {
       setProcessingCarId(null);
     }
@@ -848,7 +883,7 @@ export default function AdminModerationPage({
                                     type="button"
                                     disabled={processingCarId === car.id}
                                     onClick={() => openSanctionModal(car)}
-                                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-rose-600 dark:text-rose-300 transition-colors text-xs font-medium"
+                                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-rose-600 dark:text-rose-300 transition-colors text-xs font-medium disabled:opacity-50"
                                   >
                                     Reject
                                   </button>
@@ -856,16 +891,18 @@ export default function AdminModerationPage({
                               ) : isPublished ? (
                                 <button
                                   type="button"
+                                  disabled={processingCarId === car.id}
                                   onClick={() => openSanctionModal(car)}
-                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium"
+                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
                                 >
                                   Delist
                                 </button>
                               ) : (
                                 <button
                                   type="button"
+                                  disabled={processingCarId === car.id}
                                   onClick={() => handleApproveCar(car)}
-                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium"
+                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
                                 >
                                   Reactivate
                                 </button>
@@ -881,6 +918,16 @@ export default function AdminModerationPage({
                                 title="Inspect listing photos"
                               >
                                 <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={processingCarId === car.id}
+                                onClick={() => setDeleteModalCar(car)}
+                                className="w-7 h-7 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center transition-colors disabled:opacity-50"
+                                title="Admin: Permanently delete car entity from database"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
                               </button>
                             </div>
                           </td>
@@ -943,10 +990,12 @@ export default function AdminModerationPage({
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-slate-900 dark:text-[#E6EAF2]">
-                        Suspend / Reject Listing
+                        {modalCar.status === "published" ? "Delist & Suspend Listing" : "Reject Listing"}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Apply marketplace trade restriction & audit sanction
+                        {modalCar.status === "published"
+                          ? "Remove vehicle from public marketplace & apply administrative hold"
+                          : "Reject pending submission & notify seller of discrepancies"}
                       </p>
                     </div>
                   </div>
@@ -1125,7 +1174,7 @@ export default function AdminModerationPage({
                       ) : (
                         <>
                           <span className="material-symbols-outlined text-[17px]">block</span>
-                          Confirm Suspension
+                          {modalCar.status === "published" ? "Confirm Delist" : "Confirm Suspension"}
                         </>
                       )}
                     </button>
@@ -1213,6 +1262,183 @@ export default function AdminModerationPage({
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* 6. Admin Master Action: Custom Delete Confirmation Modal */}
+          {deleteModalCar && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
+              <div className="relative w-full max-w-2xl mx-auto rounded-2xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] shadow-2xl p-6 sm:p-7 overflow-hidden transition-colors">
+                
+                {/* Top Crimson Accent Line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-red-600 to-rose-700"></div>
+
+                {/* Header */}
+                <div className="flex items-start justify-between pb-4 border-b border-slate-200 dark:border-[#263046]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-rose-500/10 dark:bg-rose-950/80 border border-rose-500/30 dark:border-rose-800/80 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+                      <span className="material-symbols-outlined text-[26px]">delete_forever</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-[#E6EAF2] tracking-tight">
+                        Permanently Delete Listing
+                      </h3>
+                      <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        Administrative Superuser Wipe • Irreversible Database Action
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalCar(null)}
+                    disabled={processingCarId === deleteModalCar.id}
+                    className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[19px]">close</span>
+                  </button>
+                </div>
+
+                {/* Prominent Vehicle Photo & Identity Card */}
+                <div className="my-5">
+                  <div className="relative w-full h-56 sm:h-64 rounded-xl overflow-hidden border border-slate-200 dark:border-[#263046] shadow-inner bg-slate-900 group">
+                    <img
+                      src={deleteModalCar.image}
+                      alt={deleteModalCar.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src =
+                          "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80";
+                      }}
+                    />
+                    
+                    {/* Top Scrim Gradient & Metadata Badges */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/60 pointer-events-none"></div>
+
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase backdrop-blur-md border ${
+                        deleteModalCar.status === "published"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                          : deleteModalCar.status === "pending_review"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                      }`}>
+                        {deleteModalCar.status === "published" ? "Live on Marketplace" : deleteModalCar.status === "pending_review" ? "Pending Verification" : "Suspended Hold"}
+                      </span>
+
+                      <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-medium text-slate-200 bg-black/60 backdrop-blur-md border border-white/20">
+                        ID: #{deleteModalCar.id?.slice(-8)}
+                      </span>
+                    </div>
+
+                    {/* Bottom Title & Valuation Overlay */}
+                    <div className="absolute bottom-3 inset-x-4 flex flex-col sm:flex-row sm:items-end justify-between gap-1 text-white">
+                      <div>
+                        <h4 className="text-xl font-bold capitalize drop-shadow-md tracking-tight">
+                          {deleteModalCar.title}
+                        </h4>
+                        <p className="text-xs text-slate-300 font-mono mt-0.5">
+                          {deleteModalCar.year} • {deleteModalCar.city} • {deleteModalCar.mileage}
+                        </p>
+                      </div>
+                      <div className="text-right sm:text-right">
+                        <div className="text-xl font-extrabold font-mono text-emerald-400 drop-shadow-md">
+                          {deleteModalCar.priceFormatted}
+                        </div>
+                        <div className="text-[10px] text-slate-300 font-mono">
+                          Valuation Record
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3-Column Detailed Vehicle Specs Pill Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046]">
+                      <span className="text-[10px] uppercase font-mono text-slate-400 block">Seller Information</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-200 block truncate mt-0.5">
+                        {deleteModalCar.seller?.name || "Private Seller"}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate block">
+                        {deleteModalCar.seller?.phoneNumber || deleteModalCar.seller?.email || "shoaib@test.com"}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046]">
+                      <span className="text-[10px] uppercase font-mono text-slate-400 block">Specs & Fuel</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-200 block truncate mt-0.5">
+                        {deleteModalCar.fuel} • {deleteModalCar.transmission}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate block capitalize">
+                        {deleteModalCar.bodyType || "Sedan"}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046]">
+                      <span className="text-[10px] uppercase font-mono text-slate-400 block">Registration Region</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-200 block truncate mt-0.5 capitalize">
+                        {deleteModalCar.city}
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 truncate block">
+                        Excise Verified Node
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Permanent Purge Warning */}
+                <div className="p-3.5 rounded-xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/25 dark:border-rose-900/60 flex items-start gap-3">
+                  <span className="material-symbols-outlined text-rose-600 dark:text-rose-400 text-[22px] mt-0.5 shrink-0">
+                    warning
+                  </span>
+                  <div className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
+                    <strong>Critical Confirmation:</strong> You are about to permanently delete this vehicle entity from the MongoDB database. The car will be purged immediately from the live marketplace, public search indexes, and buyer favorite collections. <strong>This action cannot be undone.</strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons Footer */}
+                <div className="mt-6 pt-4 border-t border-slate-200 dark:border-[#263046] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-mono">
+                    <span className="material-symbols-outlined text-[15px] text-rose-500">
+                      security
+                    </span>
+                    Admin Superuser Verification Required
+                  </div>
+
+                  <div className="flex items-center gap-2.5 justify-end">
+                    <button
+                      type="button"
+                      disabled={processingCarId === deleteModalCar.id}
+                      onClick={() => setDeleteModalCar(null)}
+                      className="h-10 px-4 rounded-lg bg-slate-100 dark:bg-[#1E293B] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#25334a] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={processingCarId === deleteModalCar.id}
+                      onClick={handleConfirmDeleteByAdmin}
+                      className="h-10 px-5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-all text-xs font-semibold flex items-center gap-2 shadow-md shadow-rose-900/40 disabled:opacity-50"
+                    >
+                      {processingCarId === deleteModalCar.id ? (
+                        <>
+                          <span className="material-symbols-outlined text-[18px] animate-spin">
+                            progress_activity
+                          </span>
+                          Purging from Database...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                          Permanently Delete Vehicle
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
