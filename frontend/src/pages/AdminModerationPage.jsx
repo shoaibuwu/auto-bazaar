@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
+import AdminDashboardOverview from "../components/admin/AdminDashboardOverview";
 import { useAuth } from "../context/AuthContext";
 import { getAllPlatformCars, approveCar, rejectCar, deleteCarByAdmin } from "../api/admin.api";
 import { formatCar } from "../api/cars.api";
@@ -23,8 +24,8 @@ export default function AdminModerationPage({
 }) {
   const { user, isAuthenticated, isAdmin } = useAuth();
 
-  // Navigation tab state
-  const [activeTab, setActiveTab] = useState("listings");
+  // Navigation tab state ('dashboard' | 'listings' | 'users' | 'reports' | 'audit-log' | 'system-settings')
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   // Cars dataset state
   const [allCars, setAllCars] = useState([]);
@@ -325,75 +326,8 @@ export default function AdminModerationPage({
 
         {/* 3. Main Operational Content Body */}
         <main className="w-full pt-20 px-8 pb-12 flex flex-col gap-6">
-          
-          {/* Sub-header Breadcrumb & Operational Mode Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-[#263046]">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
-                <span className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer">
-                  ADMIN CONSOLE
-                </span>
-                <span>/</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-semibold tracking-wide">
-                  VEHICLE REGISTRY & QUALITY DESK
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
-                  Directory & Biometrics
-                </h1>
-                <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shadow-sm transition-colors">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-                  NADRA API 3.4 Connected
-                </span>
-              </div>
-            </div>
 
-            {/* Right Header Actions */}
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={fetchCars}
-                className="h-9 px-3 rounded-lg bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] hover:bg-slate-100 dark:hover:bg-[#161F30] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm"
-              >
-                <span className={`material-symbols-outlined text-[17px] text-slate-500 dark:text-slate-400 ${isLoading ? "animate-spin" : ""}`}>
-                  refresh
-                </span>
-                Sync Feeds
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const csvData = allCars.map(c => `${c.title},${c.price},${c.city},${c.status}`).join("\n");
-                  const blob = new Blob([csvData], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `autobazaar_listings_${Date.now()}.csv`;
-                  a.click();
-                }}
-                className="h-9 px-3 rounded-lg bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] hover:bg-slate-100 dark:hover:bg-[#161F30] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[17px] text-slate-500 dark:text-slate-400">
-                  file_download
-                </span>
-                Export CSV
-              </button>
-
-              <Link
-                to="/sell"
-                className="h-9 px-3.5 rounded-lg bg-[#6366F1] hover:bg-[#5558E6] text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm shadow-indigo-500/20"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  add
-                </span>
-                + Add Listing
-              </Link>
-            </div>
-          </div>
-
-          {/* Action Notification Alert */}
+          {/* Action Notification Alert (Global for all tabs) */}
           {actionNotice && (
             <div
               className={`p-4 rounded-xl flex items-center justify-between gap-3 text-xs font-medium border animate-in fade-in transition-colors ${
@@ -420,7 +354,89 @@ export default function AdminModerationPage({
             </div>
           )}
 
-          {/* 1. Top KPI Summary Cards (4 Columns) */}
+          {activeTab === "dashboard" ? (
+            <AdminDashboardOverview
+              allCars={allCars}
+              metrics={metrics}
+              onNavigateToListings={() => setActiveTab("listings")}
+              onApproveCar={handleApproveCar}
+              onRejectCar={openSanctionModal}
+              onInspectCar={(car) => {
+                setInspectCar(car);
+                setInspectPhotoIdx(0);
+              }}
+              processingCarId={processingCarId}
+            />
+          ) : (
+            <>
+              {/* Sub-header Breadcrumb & Operational Mode Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-[#263046]">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+                    <span className="hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer">
+                      ADMIN CONSOLE
+                    </span>
+                    <span>/</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold tracking-wide">
+                      VEHICLE REGISTRY & QUALITY DESK
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
+                      Vehicle Moderation Desk
+                    </h1>
+                    <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shadow-sm transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                      Live Marketplace Registry
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Header Actions */}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={fetchCars}
+                    className="h-9 px-3 rounded-lg bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] hover:bg-slate-100 dark:hover:bg-[#161F30] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className={`material-symbols-outlined text-[17px] text-slate-500 dark:text-slate-400 ${isLoading ? "animate-spin" : ""}`}>
+                      refresh
+                    </span>
+                    Sync Feeds
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const csvData = allCars.map(c => `${c.title},${c.price},${c.city},${c.status}`).join("\n");
+                      const blob = new Blob([csvData], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `autobazaar_listings_${Date.now()}.csv`;
+                      a.click();
+                    }}
+                    className="h-9 px-3 rounded-lg bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] hover:bg-slate-100 dark:hover:bg-[#161F30] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[17px] text-slate-500 dark:text-slate-400">
+                      file_download
+                    </span>
+                    Export CSV
+                  </button>
+
+                  <Link
+                    to="/sell"
+                    className="h-9 px-3.5 rounded-lg bg-[#6366F1] hover:bg-[#5558E6] text-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm shadow-indigo-500/20"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      add
+                    </span>
+                    + Add Listing
+                  </Link>
+                </div>
+              </div>
+
+              {/* 1. Top KPI Summary Cards (4 Columns) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Card 1: Total Users / Inventory */}
             <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
@@ -973,6 +989,8 @@ export default function AdminModerationPage({
               </div>
             </div>
           </div>
+        </>
+      )}
 
           {/* 4. Embedded / Active State Modal: "Suspend / Sanction Listing" */}
           {modalCar && (
@@ -1446,11 +1464,11 @@ export default function AdminModerationPage({
           {/* Operational Footer Metrics */}
           <div className="py-4 border-t border-slate-200 dark:border-[#263046] flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-3">
-              <span>AutoBazaar Trust & Safety System v4.9.1</span>
+              <span>AutoBazaar Trust & Safety System</span>
               <span>•</span>
-              <span className="text-emerald-600 dark:text-emerald-400">NADRA Biometric Sync: 99.8% Uptime</span>
+              <span className="text-emerald-600 dark:text-emerald-400">Database Sync Active</span>
             </div>
-            <div>Karachi & Lahore Admin Regional Node Active</div>
+            <div>Admin Console Active</div>
           </div>
 
         </main>
