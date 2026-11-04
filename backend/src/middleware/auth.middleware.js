@@ -75,10 +75,12 @@ export const authorizeRoles = (...roles) => {
 
 /**
  * Rate limiter for Auth routes to prevent brute-force attacks
+ * In development, rate limiting is skipped completely so localhost testing is never blocked.
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 requests per window
+  max: process.env.NODE_ENV === "production" ? 20 : 1000,
+  skip: () => process.env.NODE_ENV !== "production",
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   message: {
