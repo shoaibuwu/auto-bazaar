@@ -45,6 +45,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    status: {
+      type: String,
+      enum: {
+        values: ["active", "suspended"],
+        message: "{VALUE} is not a valid status",
+      },
+      default: "active",
+    },
+    suspensionReason: {
+      type: String,
+      default: "",
+    },
+    city: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
