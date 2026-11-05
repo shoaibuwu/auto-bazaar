@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdminDashboardOverview from "../components/admin/AdminDashboardOverview";
+import AdminUsersDesk from "../components/admin/AdminUsersDesk";
 import { useAuth } from "../context/AuthContext";
 import { getAllPlatformCars, approveCar, rejectCar, deleteCarByAdmin } from "../api/admin.api";
 import { formatCar } from "../api/cars.api";
@@ -217,9 +218,8 @@ export default function AdminModerationPage({
       const isDelisting = modalCar.status === "published";
       setActionNotice({
         type: "info",
-        message: `Listing "${modalCar.title}" has been ${
-          isDelisting ? "delisted and hidden from public marketplace" : "rejected and moved to hold"
-        }. Notification dispatched.`,
+        message: `Listing "${modalCar.title}" has been ${isDelisting ? "delisted and hidden from public marketplace" : "rejected and moved to hold"
+          }. Notification dispatched.`,
       });
 
       closeSanctionModal();
@@ -330,13 +330,12 @@ export default function AdminModerationPage({
           {/* Action Notification Alert (Global for all tabs) */}
           {actionNotice && (
             <div
-              className={`p-4 rounded-xl flex items-center justify-between gap-3 text-xs font-medium border animate-in fade-in transition-colors ${
-                actionNotice.type === "success"
+              className={`p-4 rounded-xl flex items-center justify-between gap-3 text-xs font-medium border animate-in fade-in transition-colors ${actionNotice.type === "success"
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
                   : actionNotice.type === "info"
-                  ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-300"
-                  : "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300"
-              }`}
+                    ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-300"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300"
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">
@@ -367,6 +366,8 @@ export default function AdminModerationPage({
               }}
               processingCarId={processingCarId}
             />
+          ) : activeTab === "users" ? (
+            <AdminUsersDesk currentAdminId={user?._id || user?.id} />
           ) : (
             <>
               {/* Sub-header Breadcrumb & Operational Mode Bar */}
@@ -437,566 +438,561 @@ export default function AdminModerationPage({
               </div>
 
               {/* 1. Top KPI Summary Cards (4 Columns) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* Card 1: Total Users / Inventory */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-medium uppercase tracking-wider font-mono">
-                  Total Listings
-                </span>
-                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] flex items-center justify-center text-slate-600 dark:text-slate-300">
-                  <span className="material-symbols-outlined text-[16px]">groups</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* Card 1: Total Users / Inventory */}
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-medium uppercase tracking-wider font-mono">
+                      Total Listings
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] flex items-center justify-center text-slate-600 dark:text-slate-300">
+                      <span className="material-symbols-outlined text-[16px]">groups</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
+                      {metrics.total.toLocaleString()}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                        <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                        +12.4%
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">across Pakistan hubs</span>
+                    </div>
+                  </div>
+                  <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl pointer-events-none"></div>
+                </div>
+
+                {/* Card 2: Active Sellers & Published */}
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-medium uppercase tracking-wider font-mono">
+                      Active Published Inventory
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] flex items-center justify-center text-slate-600 dark:text-slate-300">
+                      <span className="material-symbols-outlined text-[16px]">storefront</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
+                      {metrics.published.toLocaleString()}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-medium">
+                        100% Certified
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Live on marketplace</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Pending Review / NADRA Desk */}
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-medium uppercase tracking-wider font-mono">
+                      Pending Moderation
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-[#271E14] border border-amber-500/30 dark:border-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <span className="material-symbols-outlined text-[16px]">fingerprint</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-300">
+                      {metrics.pending}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-slate-400 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      <span>Requires desk review (Avg: 2.1h)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 4: Suspended / Rejected Listings */}
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-medium uppercase tracking-wider font-mono">
+                      Sanctioned / Held
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-[#2A161E] border border-rose-500/30 dark:border-rose-900/60 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                      <span className="material-symbols-outlined text-[16px]">gavel</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-300">
+                      {metrics.rejected}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-slate-400 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                      <span>Under quality or fraud check</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
-                  {metrics.total.toLocaleString()}
+
+              {/* 2. Action & Filter Toolbar */}
+              <div className="p-3.5 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col gap-3.5 shadow-sm transition-colors">
+                {/* Row 1: Search & Filter Tabs */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  {/* Search Input */}
+                  <div className="relative flex-1 max-w-xl">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[18px]">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by vehicle title, seller name, city, or engine..."
+                      className="w-full h-10 pl-9 pr-3 rounded-lg bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-xs text-slate-900 dark:text-[#E6EAF2] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                    />
+                    <span className="absolute right-2.5 top-2.5 text-[10px] font-mono text-slate-500 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-[#162032] border border-slate-300 dark:border-[#263046]">
+                      ⌘K
+                    </span>
+                  </div>
+
+                  {/* Segmented Status Tabs */}
+                  <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-[#0B0F1A] p-1 rounded-lg border border-slate-200 dark:border-[#263046] text-xs transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("all")}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${statusFilter === "all"
+                          ? "text-slate-900 dark:text-white bg-white dark:bg-[#1A2234] border border-slate-300 dark:border-[#32405D] shadow-sm"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
+                    >
+                      <span>All</span>
+                      <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 px-1 rounded bg-slate-200 dark:bg-[#0B0F1A]">
+                        {metrics.total}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("published")}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${statusFilter === "published"
+                          ? "text-slate-900 dark:text-white bg-white dark:bg-[#1A2234] border border-slate-300 dark:border-[#32405D] shadow-sm"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                        }`}
+                    >
+                      <span>Active</span>
+                      <span className="text-[10px] font-mono text-slate-600 dark:text-slate-500 px-1 rounded bg-slate-200 dark:bg-[#121826]">
+                        {metrics.published}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("pending_review")}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${statusFilter === "pending_review"
+                          ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 dark:bg-amber-950/60 border border-amber-500/30 dark:border-amber-800 shadow-sm font-semibold"
+                          : "text-amber-600 dark:text-amber-400/90 hover:text-amber-700 dark:hover:text-amber-300"
+                        }`}
+                    >
+                      <span>Pending Verification</span>
+                      <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400/80 px-1 rounded bg-amber-500/20 dark:bg-amber-950/40 border border-amber-500/30 dark:border-amber-800/40">
+                        {metrics.pending}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("rejected")}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${statusFilter === "rejected"
+                          ? "text-rose-700 dark:text-rose-300 bg-rose-500/10 dark:bg-rose-950/60 border border-rose-500/30 dark:border-rose-800 shadow-sm font-semibold"
+                          : "text-rose-600 dark:text-rose-400/90 hover:text-rose-700 dark:hover:text-rose-300"
+                        }`}
+                    >
+                      <span>Suspended</span>
+                      <span className="text-[10px] font-mono text-rose-700 dark:text-rose-400/80 px-1 rounded bg-rose-500/20 dark:bg-rose-950/40 border border-rose-500/30 dark:border-rose-800/40">
+                        {metrics.rejected}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                    <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                    +12.4%
-                  </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">across Pakistan hubs</span>
+
+                {/* Row 2: Secondary Dropdowns & Fast Filters */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100 dark:border-[#1C263A] text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Make Dropdown */}
+                    <div className="relative">
+                      <select
+                        value={selectedMake}
+                        onChange={(e) => setSelectedMake(e.target.value)}
+                        className="appearance-none h-8 pl-2.5 pr-7 rounded bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        <option value="all">Make: All Makes</option>
+                        <option value="toyota">Toyota</option>
+                        <option value="suzuki">Suzuki</option>
+                        <option value="honda">Honda</option>
+                        <option value="kia">KIA</option>
+                        <option value="hyundai">Hyundai</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-1.5 top-2 text-slate-400 text-[16px] pointer-events-none">
+                        expand_more
+                      </span>
+                    </div>
+
+                    {/* Region Dropdown */}
+                    <div className="relative">
+                      <select
+                        value={selectedCity}
+                        onChange={(e) => setSelectedCity(e.target.value)}
+                        className="appearance-none h-8 pl-2.5 pr-7 rounded bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        <option value="all">Region: All Pakistan</option>
+                        <option value="lahore">Punjab (Lahore, RWP, FSD)</option>
+                        <option value="karachi">Sindh (Karachi, Hyderabad)</option>
+                        <option value="islamabad">Islamabad Capital (ICT)</option>
+                        <option value="peshawar">Khyber Pakhtunkhwa (KPK)</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-1.5 top-2 text-slate-400 text-[16px] pointer-events-none">
+                        expand_more
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="h-8 px-2.5 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                      <span>Reset</span>
+                    </button>
+                  </div>
+
+                  {/* Batch Action Status */}
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px] font-mono">
+                    <span>{selectedCarIds.size} listings selected for batch action</span>
+                    {selectedCarIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionNotice({
+                            type: "info",
+                            message: `Batch action triggered on ${selectedCarIds.size} listings.`,
+                          });
+                          setTimeout(() => setActionNotice(null), 4000);
+                        }}
+                        className="px-2 py-1 rounded bg-slate-100 dark:bg-[#1A2234] border border-slate-200 dark:border-[#263046] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors"
+                      >
+                        Batch Action
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl pointer-events-none"></div>
-            </div>
 
-            {/* Card 2: Active Sellers & Published */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-medium uppercase tracking-wider font-mono">
-                  Active Published Inventory
-                </span>
-                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] flex items-center justify-center text-slate-600 dark:text-slate-300">
-                  <span className="material-symbols-outlined text-[16px]">storefront</span>
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#E6EAF2]">
-                  {metrics.published.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 font-medium">
-                    100% Certified
-                  </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Live on marketplace</span>
-                </div>
-              </div>
-            </div>
+              {/* 3. Searchable Vehicles & Moderation Table */}
+              <div className="rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] shadow-sm overflow-hidden flex flex-col transition-colors">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    {/* Table Header */}
+                    <thead className="bg-slate-50 dark:bg-[#0D1322] border-b border-slate-200 dark:border-[#263046] text-slate-500 dark:text-slate-400 uppercase font-mono tracking-wider text-[10px] transition-colors">
+                      <tr>
+                        <th className="py-3 px-3.5 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredCars.length > 0 && selectedCarIds.size === filteredCars.length}
+                            onChange={handleToggleSelectAll}
+                            className="rounded bg-slate-50 dark:bg-[#0B0F1A] border-slate-300 dark:border-[#263046] text-indigo-600 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                          />
+                        </th>
+                        <th className="py-3 px-3">Vehicle & Details</th>
+                        <th className="py-3 px-3">Seller Verification</th>
+                        <th className="py-3 px-3">Specs & Fuel</th>
+                        <th className="py-3 px-3">Valuation (PKR)</th>
+                        <th className="py-3 px-3">Moderation Status</th>
+                        <th className="py-3 px-3">Submitted</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
 
-            {/* Card 3: Pending Review / NADRA Desk */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-medium uppercase tracking-wider font-mono">
-                  Pending Moderation
-                </span>
-                <div className="w-7 h-7 rounded-lg bg-amber-500/10 dark:bg-[#271E14] border border-amber-500/30 dark:border-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                  <span className="material-symbols-outlined text-[16px]">fingerprint</span>
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-300">
-                  {metrics.pending}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                  <span>Requires desk review (Avg: 2.1h)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Suspended / Rejected Listings */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                <span className="text-xs font-medium uppercase tracking-wider font-mono">
-                  Sanctioned / Held
-                </span>
-                <div className="w-7 h-7 rounded-lg bg-rose-500/10 dark:bg-[#2A161E] border border-rose-500/30 dark:border-rose-900/60 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                  <span className="material-symbols-outlined text-[16px]">gavel</span>
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-300">
-                  {metrics.rejected}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-slate-500 dark:text-slate-400 text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                  <span>Under quality or fraud check</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Action & Filter Toolbar */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] flex flex-col gap-3.5 shadow-sm transition-colors">
-            {/* Row 1: Search & Filter Tabs */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              {/* Search Input */}
-              <div className="relative flex-1 max-w-xl">
-                <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[18px]">
-                  search
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by vehicle title, seller name, city, or engine..."
-                  className="w-full h-10 pl-9 pr-3 rounded-lg bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-xs text-slate-900 dark:text-[#E6EAF2] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
-                />
-                <span className="absolute right-2.5 top-2.5 text-[10px] font-mono text-slate-500 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-[#162032] border border-slate-300 dark:border-[#263046]">
-                  ⌘K
-                </span>
-              </div>
-
-              {/* Segmented Status Tabs */}
-              <div className="flex items-center overflow-x-auto no-scrollbar bg-slate-100 dark:bg-[#0B0F1A] p-1 rounded-lg border border-slate-200 dark:border-[#263046] text-xs transition-colors">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("all")}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                    statusFilter === "all"
-                      ? "text-slate-900 dark:text-white bg-white dark:bg-[#1A2234] border border-slate-300 dark:border-[#32405D] shadow-sm"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  <span>All</span>
-                  <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 px-1 rounded bg-slate-200 dark:bg-[#0B0F1A]">
-                    {metrics.total}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("published")}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                    statusFilter === "published"
-                      ? "text-slate-900 dark:text-white bg-white dark:bg-[#1A2234] border border-slate-300 dark:border-[#32405D] shadow-sm"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  <span>Active</span>
-                  <span className="text-[10px] font-mono text-slate-600 dark:text-slate-500 px-1 rounded bg-slate-200 dark:bg-[#121826]">
-                    {metrics.published}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("pending_review")}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                    statusFilter === "pending_review"
-                      ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 dark:bg-amber-950/60 border border-amber-500/30 dark:border-amber-800 shadow-sm font-semibold"
-                      : "text-amber-600 dark:text-amber-400/90 hover:text-amber-700 dark:hover:text-amber-300"
-                  }`}
-                >
-                  <span>Pending Verification</span>
-                  <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400/80 px-1 rounded bg-amber-500/20 dark:bg-amber-950/40 border border-amber-500/30 dark:border-amber-800/40">
-                    {metrics.pending}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("rejected")}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                    statusFilter === "rejected"
-                      ? "text-rose-700 dark:text-rose-300 bg-rose-500/10 dark:bg-rose-950/60 border border-rose-500/30 dark:border-rose-800 shadow-sm font-semibold"
-                      : "text-rose-600 dark:text-rose-400/90 hover:text-rose-700 dark:hover:text-rose-300"
-                  }`}
-                >
-                  <span>Suspended</span>
-                  <span className="text-[10px] font-mono text-rose-700 dark:text-rose-400/80 px-1 rounded bg-rose-500/20 dark:bg-rose-950/40 border border-rose-500/30 dark:border-rose-800/40">
-                    {metrics.rejected}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Row 2: Secondary Dropdowns & Fast Filters */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100 dark:border-[#1C263A] text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Make Dropdown */}
-                <div className="relative">
-                  <select
-                    value={selectedMake}
-                    onChange={(e) => setSelectedMake(e.target.value)}
-                    className="appearance-none h-8 pl-2.5 pr-7 rounded bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="all">Make: All Makes</option>
-                    <option value="toyota">Toyota</option>
-                    <option value="suzuki">Suzuki</option>
-                    <option value="honda">Honda</option>
-                    <option value="kia">KIA</option>
-                    <option value="hyundai">Hyundai</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-1.5 top-2 text-slate-400 text-[16px] pointer-events-none">
-                    expand_more
-                  </span>
-                </div>
-
-                {/* Region Dropdown */}
-                <div className="relative">
-                  <select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    className="appearance-none h-8 pl-2.5 pr-7 rounded bg-slate-50 dark:bg-[#0B0F1A] border border-slate-200 dark:border-[#263046] text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    <option value="all">Region: All Pakistan</option>
-                    <option value="lahore">Punjab (Lahore, RWP, FSD)</option>
-                    <option value="karachi">Sindh (Karachi, Hyderabad)</option>
-                    <option value="islamabad">Islamabad Capital (ICT)</option>
-                    <option value="peshawar">Khyber Pakhtunkhwa (KPK)</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-1.5 top-2 text-slate-400 text-[16px] pointer-events-none">
-                    expand_more
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="h-8 px-2.5 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[15px]">filter_alt_off</span>
-                  <span>Reset</span>
-                </button>
-              </div>
-
-              {/* Batch Action Status */}
-              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px] font-mono">
-                <span>{selectedCarIds.size} listings selected for batch action</span>
-                {selectedCarIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionNotice({
-                        type: "info",
-                        message: `Batch action triggered on ${selectedCarIds.size} listings.`,
-                      });
-                      setTimeout(() => setActionNotice(null), 4000);
-                    }}
-                    className="px-2 py-1 rounded bg-slate-100 dark:bg-[#1A2234] border border-slate-200 dark:border-[#263046] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors"
-                  >
-                    Batch Action
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Searchable Vehicles & Moderation Table */}
-          <div className="rounded-xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] shadow-sm overflow-hidden flex flex-col transition-colors">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                {/* Table Header */}
-                <thead className="bg-slate-50 dark:bg-[#0D1322] border-b border-slate-200 dark:border-[#263046] text-slate-500 dark:text-slate-400 uppercase font-mono tracking-wider text-[10px] transition-colors">
-                  <tr>
-                    <th className="py-3 px-3.5 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={filteredCars.length > 0 && selectedCarIds.size === filteredCars.length}
-                        onChange={handleToggleSelectAll}
-                        className="rounded bg-slate-50 dark:bg-[#0B0F1A] border-slate-300 dark:border-[#263046] text-indigo-600 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                      />
-                    </th>
-                    <th className="py-3 px-3">Vehicle & Details</th>
-                    <th className="py-3 px-3">Seller Verification</th>
-                    <th className="py-3 px-3">Specs & Fuel</th>
-                    <th className="py-3 px-3">Valuation (PKR)</th>
-                    <th className="py-3 px-3">Moderation Status</th>
-                    <th className="py-3 px-3">Submitted</th>
-                    <th className="py-3 px-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-
-                {/* Table Body */}
-                <tbody className="divide-y divide-slate-100 dark:divide-[#1C263A] transition-colors">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan="8" className="py-12 text-center text-slate-500 dark:text-slate-400">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="material-symbols-outlined animate-spin text-xl text-indigo-500">
-                            progress_activity
-                          </span>
-                          <span>Loading platform registry...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredCars.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="py-16 text-center text-slate-500 dark:text-slate-400">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <span className="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-600">
-                            inventory_2
-                          </span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                            No listings match current criteria
-                          </span>
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                            Try resetting filters or checking the "All" tab.
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCars.map((car) => {
-                      const isSelected = selectedCarIds.has(car.id);
-                      const isPending = car.status === "pending_review";
-                      const isPublished = car.status === "published";
-                      const isRejected = car.status === "rejected";
-
-                      return (
-                        <tr
-                          key={car.id}
-                          className={`hover:bg-slate-50 dark:hover:bg-[#161F30]/60 transition-colors group ${
-                            isPending
-                              ? "bg-amber-500/5 dark:bg-amber-950/5"
-                              : isRejected
-                              ? "bg-rose-500/5 dark:bg-rose-950/10"
-                              : ""
-                          }`}
-                        >
-                          {/* Checkbox */}
-                          <td className="py-3.5 px-3.5 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleSelectCar(car.id)}
-                              className="rounded bg-slate-50 dark:bg-[#0B0F1A] border-slate-300 dark:border-[#263046] text-indigo-600 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                            />
-                          </td>
-
-                          {/* Vehicle Thumbnail & Title */}
-                          <td className="py-3.5 px-3">
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setInspectCar(car);
-                                  setInspectPhotoIdx(0);
-                                }}
-                                className="w-12 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-[#263046] shrink-0 bg-slate-100 dark:bg-[#0B0F1A] hover:opacity-80 transition-opacity relative group/img shadow-sm"
-                              >
-                                <img
-                                  src={car.image}
-                                  alt={car.title}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.src = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80";
-                                  }}
-                                />
-                                {car.images?.length > 1 && (
-                                  <span className="absolute bottom-0 right-0 px-1 bg-black/70 text-[9px] font-mono text-white">
-                                    {car.images.length}
-                                  </span>
-                                )}
-                              </button>
-
-                              <div>
-                                <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 capitalize">
-                                  <span>{car.title}</span>
-                                  {isPublished && (
-                                    <span
-                                      className="material-symbols-outlined text-[14px] text-emerald-500 dark:text-emerald-400"
-                                      title="Approved and Live"
-                                    >
-                                      verified
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                                  <span className="capitalize">{car.city}</span>
-                                  <span>•</span>
-                                  <span className="capitalize">{car.bodyType}</span>
-                                  <span>•</span>
-                                  <span className="font-mono text-slate-400 dark:text-slate-500">ID: #{car.id?.slice(-6)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Seller Details */}
-                          <td className="py-3.5 px-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-[#1A2234] border border-slate-200 dark:border-[#2B3954] flex items-center justify-center font-bold text-[10px] text-indigo-600 dark:text-indigo-300">
-                                {car.seller?.name ? car.seller.name.charAt(0).toUpperCase() : "S"}
-                              </div>
-                              <div>
-                                <span className="font-medium text-slate-800 dark:text-slate-200 block text-xs">
-                                  {car.seller?.name || "Private Seller"}
-                                </span>
-                                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 block">
-                                  {car.seller?.phoneNumber || car.seller?.email || "shoaib@test.com"}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Specs */}
-                          <td className="py-3.5 px-3">
-                            <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                              {car.year} • {car.fuel}
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                              {car.mileage} • {car.transmission}
-                            </div>
-                          </td>
-
-                          {/* Valuation (PKR) */}
-                          <td className="py-3.5 px-3">
-                            <div className="font-bold font-mono text-xs text-indigo-600 dark:text-indigo-300">
-                              {car.priceFormatted}
-                            </div>
-                            <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
-                              Direct Seller Asking
-                            </div>
-                          </td>
-
-                          {/* Status Badge with Live Pulsing Dot */}
-                          <td className="py-3.5 px-3">
-                            {isPending ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 dark:bg-amber-950/70 border border-amber-500/30 dark:border-amber-800/80 text-amber-700 dark:text-amber-300">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                Pending Review
+                    {/* Table Body */}
+                    <tbody className="divide-y divide-slate-100 dark:divide-[#1C263A] transition-colors">
+                      {isLoading ? (
+                        <tr>
+                          <td colSpan="8" className="py-12 text-center text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="material-symbols-outlined animate-spin text-xl text-indigo-500">
+                                progress_activity
                               </span>
-                            ) : isPublished ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 dark:bg-emerald-950/70 border border-emerald-500/30 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
-                                Published
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/10 dark:bg-rose-950/70 border border-rose-500/30 dark:border-rose-800/80 text-rose-700 dark:text-rose-300">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                Suspended
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Activity / Timestamp */}
-                          <td className="py-3.5 px-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                            {isPending ? "Pending Desk" : "Live Feed"}
-                          </td>
-
-                          {/* Action Buttons */}
-                          <td className="py-3.5 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {isPending ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    disabled={processingCarId === car.id}
-                                    onClick={() => handleApproveCar(car)}
-                                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-1 disabled:opacity-50"
-                                  >
-                                    <span className="material-symbols-outlined text-[14px]">
-                                      check_circle
-                                    </span>
-                                    Approve
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={processingCarId === car.id}
-                                    onClick={() => openSanctionModal(car)}
-                                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-rose-600 dark:text-rose-300 transition-colors text-xs font-medium disabled:opacity-50"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              ) : isPublished ? (
-                                <button
-                                  type="button"
-                                  disabled={processingCarId === car.id}
-                                  onClick={() => openSanctionModal(car)}
-                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
-                                >
-                                  Delist
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={processingCarId === car.id}
-                                  onClick={() => handleApproveCar(car)}
-                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
-                                >
-                                  Reactivate
-                                </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setInspectCar(car);
-                                  setInspectPhotoIdx(0);
-                                }}
-                                className="w-7 h-7 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center justify-center transition-colors"
-                                title="Inspect listing photos"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">visibility</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={processingCarId === car.id}
-                                onClick={() => setDeleteModalCar(car)}
-                                className="w-7 h-7 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center transition-colors disabled:opacity-50"
-                                title="Admin: Permanently delete car entity from database"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                              </button>
+                              <span>Loading platform registry...</span>
                             </div>
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : filteredCars.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="py-16 text-center text-slate-500 dark:text-slate-400">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <span className="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-600">
+                                inventory_2
+                              </span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                No listings match current criteria
+                              </span>
+                              <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                Try resetting filters or checking the "All" tab.
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCars.map((car) => {
+                          const isSelected = selectedCarIds.has(car.id);
+                          const isPending = car.status === "pending_review";
+                          const isPublished = car.status === "published";
+                          const isRejected = car.status === "rejected";
 
-            {/* Table Pagination Footer */}
-            <div className="px-4 py-3 bg-slate-50 dark:bg-[#0D1322] border-t border-slate-200 dark:border-[#263046] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs transition-colors">
-              <div className="text-slate-500 dark:text-slate-400">
-                Showing <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">1</span> to{" "}
-                <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">{filteredCars.length}</span> of{" "}
-                <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">{allCars.length}</span> platform listings
-              </div>
+                          return (
+                            <tr
+                              key={car.id}
+                              className={`hover:bg-slate-50 dark:hover:bg-[#161F30]/60 transition-colors group ${isPending
+                                  ? "bg-amber-500/5 dark:bg-amber-950/5"
+                                  : isRejected
+                                    ? "bg-rose-500/5 dark:bg-rose-950/10"
+                                    : ""
+                                }`}
+                            >
+                              {/* Checkbox */}
+                              <td className="py-3.5 px-3.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectCar(car.id)}
+                                  className="rounded bg-slate-50 dark:bg-[#0B0F1A] border-slate-300 dark:border-[#263046] text-indigo-600 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                                />
+                              </td>
 
-              <div className="flex items-center gap-1.5 font-mono">
-                <button
-                  type="button"
-                  disabled
-                  className="h-8 px-2.5 rounded bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] text-slate-400 disabled:opacity-40 transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  <span>Prev</span>
-                </button>
-                <button
-                  type="button"
-                  className="w-8 h-8 rounded bg-indigo-600 text-white font-medium flex items-center justify-center shadow-sm"
-                >
-                  1
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="h-8 px-2.5 rounded bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] text-slate-400 disabled:opacity-40 transition-colors flex items-center gap-1"
-                >
-                  <span>Next</span>
-                  <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                </button>
+                              {/* Vehicle Thumbnail & Title */}
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInspectCar(car);
+                                      setInspectPhotoIdx(0);
+                                    }}
+                                    className="w-12 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-[#263046] shrink-0 bg-slate-100 dark:bg-[#0B0F1A] hover:opacity-80 transition-opacity relative group/img shadow-sm"
+                                  >
+                                    <img
+                                      src={car.image}
+                                      alt={car.title}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.src = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80";
+                                      }}
+                                    />
+                                    {car.images?.length > 1 && (
+                                      <span className="absolute bottom-0 right-0 px-1 bg-black/70 text-[9px] font-mono text-white">
+                                        {car.images.length}
+                                      </span>
+                                    )}
+                                  </button>
+
+                                  <div>
+                                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 capitalize">
+                                      <span>{car.title}</span>
+                                      {isPublished && (
+                                        <span
+                                          className="material-symbols-outlined text-[14px] text-emerald-500 dark:text-emerald-400"
+                                          title="Approved and Live"
+                                        >
+                                          verified
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                      <span className="capitalize">{car.city}</span>
+                                      <span>•</span>
+                                      <span className="capitalize">{car.bodyType}</span>
+                                      <span>•</span>
+                                      <span className="font-mono text-slate-400 dark:text-slate-500">ID: #{car.id?.slice(-6)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Seller Details */}
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-[#1A2234] border border-slate-200 dark:border-[#2B3954] flex items-center justify-center font-bold text-[10px] text-indigo-600 dark:text-indigo-300">
+                                    {car.seller?.name ? car.seller.name.charAt(0).toUpperCase() : "S"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-slate-800 dark:text-slate-200 block text-xs">
+                                      {car.seller?.name || "Private Seller"}
+                                    </span>
+                                    <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 block">
+                                      {car.seller?.phoneNumber || car.seller?.email || "shoaib@test.com"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Specs */}
+                              <td className="py-3.5 px-3">
+                                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                  {car.year} • {car.fuel}
+                                </div>
+                                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                  {car.mileage} • {car.transmission}
+                                </div>
+                              </td>
+
+                              {/* Valuation (PKR) */}
+                              <td className="py-3.5 px-3">
+                                <div className="font-bold font-mono text-xs text-indigo-600 dark:text-indigo-300">
+                                  {car.priceFormatted}
+                                </div>
+                                <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                                  Direct Seller Asking
+                                </div>
+                              </td>
+
+                              {/* Status Badge with Live Pulsing Dot */}
+                              <td className="py-3.5 px-3">
+                                {isPending ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 dark:bg-amber-950/70 border border-amber-500/30 dark:border-amber-800/80 text-amber-700 dark:text-amber-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    Pending Review
+                                  </span>
+                                ) : isPublished ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 dark:bg-emerald-950/70 border border-emerald-500/30 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+                                    Published
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/10 dark:bg-rose-950/70 border border-rose-500/30 dark:border-rose-800/80 text-rose-700 dark:text-rose-300">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    Suspended
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Activity / Timestamp */}
+                              <td className="py-3.5 px-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                                {isPending ? "Pending Desk" : "Live Feed"}
+                              </td>
+
+                              {/* Action Buttons */}
+                              <td className="py-3.5 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {isPending ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        disabled={processingCarId === car.id}
+                                        onClick={() => handleApproveCar(car)}
+                                        className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-1 disabled:opacity-50"
+                                      >
+                                        <span className="material-symbols-outlined text-[14px]">
+                                          check_circle
+                                        </span>
+                                        Approve
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={processingCarId === car.id}
+                                        onClick={() => openSanctionModal(car)}
+                                        className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-rose-600 dark:text-rose-300 transition-colors text-xs font-medium disabled:opacity-50"
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  ) : isPublished ? (
+                                    <button
+                                      type="button"
+                                      disabled={processingCarId === car.id}
+                                      onClick={() => openSanctionModal(car)}
+                                      className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
+                                    >
+                                      Delist
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={processingCarId === car.id}
+                                      onClick={() => handleApproveCar(car)}
+                                      className="px-2.5 py-1 rounded bg-slate-100 dark:bg-[#162032] border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
+                                    >
+                                      Reactivate
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInspectCar(car);
+                                      setInspectPhotoIdx(0);
+                                    }}
+                                    className="w-7 h-7 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-slate-200 dark:hover:bg-[#1E293B] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center justify-center transition-colors"
+                                    title="Inspect listing photos"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={processingCarId === car.id}
+                                    onClick={() => setDeleteModalCar(car)}
+                                    className="w-7 h-7 rounded bg-slate-100 dark:bg-[#162032] border border-slate-200 dark:border-[#263046] hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-800 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center transition-colors disabled:opacity-50"
+                                    title="Admin: Permanently delete car entity from database"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Pagination Footer */}
+                <div className="px-4 py-3 bg-slate-50 dark:bg-[#0D1322] border-t border-slate-200 dark:border-[#263046] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs transition-colors">
+                  <div className="text-slate-500 dark:text-slate-400">
+                    Showing <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">1</span> to{" "}
+                    <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">{filteredCars.length}</span> of{" "}
+                    <span className="font-mono text-slate-900 dark:text-slate-200 font-semibold">{allCars.length}</span> platform listings
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <button
+                      type="button"
+                      disabled
+                      className="h-8 px-2.5 rounded bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] text-slate-400 disabled:opacity-40 transition-colors flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                      <span>Prev</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="w-8 h-8 rounded bg-indigo-600 text-white font-medium flex items-center justify-center shadow-sm"
+                    >
+                      1
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="h-8 px-2.5 rounded bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] text-slate-400 disabled:opacity-40 transition-colors flex items-center gap-1"
+                    >
+                      <span>Next</span>
+                      <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          )}
 
           {/* 4. Embedded / Active State Modal: "Suspend / Sanction Listing" */}
           {modalCar && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
               <div className="relative w-full max-w-2xl mx-auto rounded-2xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] shadow-2xl p-6 overflow-hidden transition-colors">
-                
+
                 {/* Top Decorative Accent Gradient */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-indigo-500"></div>
 
@@ -1065,11 +1061,10 @@ export default function AdminModerationPage({
                         <label
                           key={idx}
                           onClick={() => setModalViolationCategory(cat)}
-                          className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
-                            modalViolationCategory === cat
+                          className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${modalViolationCategory === cat
                               ? "bg-slate-50 dark:bg-[#0B0F1A] border-rose-500 dark:border-rose-900/80 text-rose-700 dark:text-slate-100 shadow-sm"
                               : "bg-slate-50 dark:bg-[#0B0F1A] border-slate-200 dark:border-[#263046] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -1207,7 +1202,7 @@ export default function AdminModerationPage({
           {inspectCar && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
               <div className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] p-6 shadow-2xl flex flex-col gap-4">
-                
+
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-[#263046]">
                   <div>
                     <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 capitalize">
@@ -1269,11 +1264,10 @@ export default function AdminModerationPage({
                         key={idx}
                         type="button"
                         onClick={() => setInspectPhotoIdx(idx)}
-                        className={`w-16 h-12 rounded-lg overflow-hidden border-2 shrink-0 ${
-                          idx === inspectPhotoIdx
+                        className={`w-16 h-12 rounded-lg overflow-hidden border-2 shrink-0 ${idx === inspectPhotoIdx
                             ? "border-indigo-500 scale-105"
                             : "border-transparent opacity-60 hover:opacity-100"
-                        }`}
+                          }`}
                       >
                         <img src={img} alt="" className="w-full h-full object-cover" />
                       </button>
@@ -1288,7 +1282,7 @@ export default function AdminModerationPage({
           {deleteModalCar && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
               <div className="relative w-full max-w-2xl mx-auto rounded-2xl bg-white dark:bg-[#121826] border border-slate-200 dark:border-[#263046] shadow-2xl p-6 sm:p-7 overflow-hidden transition-colors">
-                
+
                 {/* Top Crimson Accent Line */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-red-600 to-rose-700"></div>
 
@@ -1330,18 +1324,17 @@ export default function AdminModerationPage({
                           "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80";
                       }}
                     />
-                    
+
                     {/* Top Scrim Gradient & Metadata Badges */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/60 pointer-events-none"></div>
 
                     <div className="absolute top-3 inset-x-3 flex items-center justify-between">
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase backdrop-blur-md border ${
-                        deleteModalCar.status === "published"
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase backdrop-blur-md border ${deleteModalCar.status === "published"
                           ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                           : deleteModalCar.status === "pending_review"
-                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                          : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                      }`}>
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                        }`}>
                         {deleteModalCar.status === "published" ? "Live on Marketplace" : deleteModalCar.status === "pending_review" ? "Pending Verification" : "Suspended Hold"}
                       </span>
 
@@ -1468,6 +1461,7 @@ export default function AdminModerationPage({
               <span>•</span>
               <span className="text-emerald-600 dark:text-emerald-400">Database Sync Active</span>
             </div>
+            <div>Admin Console Active</div>
             <div>Admin Console Active</div>
           </div>
 

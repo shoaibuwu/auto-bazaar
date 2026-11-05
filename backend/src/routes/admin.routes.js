@@ -5,6 +5,10 @@ import {
   approveCar,
   rejectCar,
   deleteCarByAdmin,
+  getAllUsers,
+  updateUserRole,
+  updateUserStatus,
+  deleteUserByAdmin,
 } from "../controllers/admin.controller.js";
 import {
   authenticate,
@@ -24,5 +28,11 @@ router.get("/cars", getAllCars);
 router.patch("/cars/:id/approve", approveCar);
 router.patch("/cars/:id/reject", validate(rejectCarSchema), rejectCar);
 router.delete("/cars/:id", deleteCarByAdmin);
+
+// User and dealer management routes
+router.get("/users", getAllUsers);
+router.patch("/users/:id/role", updateUserRole);
+router.patch("/users/:id/status", updateUserStatus);
+router.delete("/users/:id", deleteUserByAdmin);
 
 export default router;
