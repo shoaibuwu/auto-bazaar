@@ -11,6 +11,9 @@ import {
   deleteUserByAdmin,
   getAuditLogs,
   verifyAuditChain,
+  getSystemSettings,
+  updateSystemSettings,
+  clearSystemCache,
 } from "../controllers/admin.controller.js";
 import {
   authenticate,
@@ -40,5 +43,10 @@ router.delete("/users/:id", deleteUserByAdmin);
 // Cryptographic Audit Ledger routes
 router.get("/audit-logs", getAuditLogs);
 router.post("/audit-logs/verify", verifyAuditChain);
+
+// Platform System Settings & Governance routes
+router.get("/settings", getSystemSettings);
+router.patch("/settings", updateSystemSettings);
+router.post("/settings/cache-clear", clearSystemCache);
 
 export default router;
