@@ -112,3 +112,43 @@ export async function deleteUserAccountByAdmin(userId) {
   const response = await client.delete(`/admin/users/${userId}`);
   return response?.data || response;
 }
+
+/**
+ * Fetch paginated cryptographic audit logs & metrics
+ * Calls: GET /api/v1/admin/audit-logs
+ */
+export async function getAuditLogs({
+  search = "",
+  action = "",
+  actionCategory = "",
+  actor = "",
+  page = 1,
+  limit = 20,
+} = {}) {
+  const params = {};
+  if (search) params.search = search;
+  if (action) params.action = action;
+  if (actionCategory) params.actionCategory = actionCategory;
+  if (actor) params.actor = actor;
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
+
+  const response = await client.get("/admin/audit-logs", { params });
+  return (
+    response?.data ||
+    response || {
+      logs: [],
+      pagination: { total: 0, page: 1, totalPages: 1 },
+      metrics: { totalEvents: 0, adminActions: 0, listingEvents: 0, securityFlags: 0, merkleRoot: "0x0" },
+    }
+  );
+}
+
+/**
+ * Verify cryptographic hash chain integrity
+ * Calls: POST /api/v1/admin/audit-logs/verify
+ */
+export async function verifyAuditChain() {
+  const response = await client.post("/admin/audit-logs/verify");
+  return response?.data || response;
+}

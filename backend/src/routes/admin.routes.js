@@ -9,6 +9,8 @@ import {
   updateUserRole,
   updateUserStatus,
   deleteUserByAdmin,
+  getAuditLogs,
+  verifyAuditChain,
 } from "../controllers/admin.controller.js";
 import {
   authenticate,
@@ -34,5 +36,9 @@ router.get("/users", getAllUsers);
 router.patch("/users/:id/role", updateUserRole);
 router.patch("/users/:id/status", updateUserStatus);
 router.delete("/users/:id", deleteUserByAdmin);
+
+// Cryptographic Audit Ledger routes
+router.get("/audit-logs", getAuditLogs);
+router.post("/audit-logs/verify", verifyAuditChain);
 
 export default router;

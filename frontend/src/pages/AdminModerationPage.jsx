@@ -4,6 +4,7 @@ import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdminDashboardOverview from "../components/admin/AdminDashboardOverview";
 import AdminUsersDesk from "../components/admin/AdminUsersDesk";
+import AdminAuditDesk from "../components/admin/AdminAuditDesk";
 import { useAuth } from "../context/AuthContext";
 import { getAllPlatformCars, approveCar, rejectCar, deleteCarByAdmin } from "../api/admin.api";
 import { formatCar } from "../api/cars.api";
@@ -368,6 +369,8 @@ export default function AdminModerationPage({
             />
           ) : activeTab === "users" ? (
             <AdminUsersDesk currentAdminId={user?._id || user?.id} />
+          ) : activeTab === "audit-log" ? (
+            <AdminAuditDesk />
           ) : (
             <>
               {/* Sub-header Breadcrumb & Operational Mode Bar */}
