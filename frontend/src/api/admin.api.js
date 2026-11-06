@@ -152,3 +152,30 @@ export async function verifyAuditChain() {
   const response = await client.post("/admin/audit-logs/verify");
   return response?.data || response;
 }
+
+/**
+ * Fetch platform system settings & governance policy
+ * Calls: GET /api/v1/admin/settings
+ */
+export async function getSystemSettings() {
+  const response = await client.get("/admin/settings");
+  return response?.data?.settings || response?.settings || null;
+}
+
+/**
+ * Update platform system settings
+ * Calls: PATCH /api/v1/admin/settings
+ */
+export async function updateSystemSettings(settingsPayload) {
+  const response = await client.patch("/admin/settings", settingsPayload);
+  return response?.data?.settings || response?.settings || null;
+}
+
+/**
+ * Clear system cache & verify database connection
+ * Calls: POST /api/v1/admin/settings/cache-clear
+ */
+export async function clearSystemCache() {
+  const response = await client.post("/admin/settings/cache-clear");
+  return response?.data || response;
+}
