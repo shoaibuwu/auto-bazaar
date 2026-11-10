@@ -5,15 +5,21 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { getIO } from "../socket/socket.js";
 
-const POPULATE_CAR_FIELDS = "title price images make model year city mileage fuel transmission status";
+const POPULATE_CAR_FIELDS =
+  "title price images make model year city mileage fuel transmission status";
 const POPULATE_USER_FIELDS = "name email phoneNumber avatar";
 
 /**
- * Helper: Ensure legacy single-message inquiries have a valid messages[] array in API responses
+ * Helper: Ensure legacy single-message inquiries have a valid messages[] array,
+ * and apply per-participant deletion cutoff so deleted history stays hidden for the user who deleted it.
  */
-function formatInquiryForResponse(inquiryDoc) {
-  const obj = typeof inquiryDoc.toObject === "function" ? inquiryDoc.toObject() : { ...inquiryDoc };
-  const buyerId = obj.buyer?._id || obj.buyer;
+function formatInquiryForResponse(inquiryDoc, viewerUserId = null) {
+  const obj =
+    typeof inquiryDoc.toObject === "function"
+      ? inquiryDoc.toObject()
+      : { ...inquiryDoc };
+  const buyerId = String(obj.buyer?._id || obj.buyer || "");
+  const sellerId = String(obj.seller?._id || obj.seller || "");
 
   if (!Array.isArray(obj.messages) || obj.messages.length === 0) {
     obj.messages = [
@@ -23,18 +29,42 @@ function formatInquiryForResponse(inquiryDoc) {
         text: obj.message,
         messageType: "text",
         offerPrice: null,
-        readBy: obj.status === "read" ? [buyerId, obj.seller?._id || obj.seller] : [buyerId],
+        readBy: obj.status === "read" ? [buyerId, sellerId] : [buyerId],
         createdAt: obj.createdAt,
       },
     ];
   }
 
-  if (!obj.lastMessage) {
-    obj.lastMessage = obj.message;
+  // Filter out messages older than the viewer's own delete cutoff (if they deleted earlier and re-opened later)
+  if (viewerUserId) {
+    const viewerStr = String(viewerUserId);
+    const isViewerSeller = viewerStr === sellerId;
+    const cutoff = isViewerSeller ? obj.sellerDeletedAt : obj.buyerDeletedAt;
+
+    if (cutoff) {
+      const cutoffTime = new Date(cutoff).getTime();
+      obj.messages = obj.messages.filter(
+        (m) => new Date(m.createdAt).getTime() > cutoffTime
+      );
+    }
   }
-  if (!obj.lastMessageAt) {
-    obj.lastMessageAt = obj.updatedAt || obj.createdAt;
+
+  if (obj.messages.length > 0) {
+    const newest = obj.messages[obj.messages.length - 1];
+    if (!obj.lastMessage) {
+      obj.lastMessage =
+        newest.messageType === "offer" && newest.offerPrice
+          ? `Offer: PKR ${Number(newest.offerPrice).toLocaleString("en-PK")} — ${newest.text}`
+          : newest.text;
+    }
+    if (!obj.lastMessageAt) {
+      obj.lastMessageAt = newest.createdAt || obj.updatedAt || obj.createdAt;
+    }
+  } else {
+    if (!obj.lastMessage) obj.lastMessage = obj.message;
+    if (!obj.lastMessageAt) obj.lastMessageAt = obj.updatedAt || obj.createdAt;
   }
+
   if (typeof obj.unreadBySeller !== "number") {
     obj.unreadBySeller = obj.status === "unread" ? 1 : 0;
   }
@@ -109,16 +139,24 @@ export const createInquiry = asyncHandler(async (req, res) => {
   const now = new Date();
   const resolvedPhone = phone || req.user.phoneNumber || "";
 
-  // Check if an active thread already exists for this car + buyer
+  // Check if a thread already exists for this car + buyer
   let inquiry = await Inquiry.findOne({
     car: car._id,
     buyer: currentUserId,
   });
 
   let isNewThread = false;
+  let wasHiddenForSeller = false;
+  let wasHiddenForBuyer = false;
 
   if (inquiry) {
     ensureLegacyMessagesBackfilled(inquiry);
+    wasHiddenForSeller = Boolean(inquiry.deletedBySeller);
+    wasHiddenForBuyer = Boolean(inquiry.deletedByBuyer);
+
+    // Re-surface thread for whichever side wants to see the new message (deletedAt cutoff preserves history isolation)
+    inquiry.deletedByBuyer = false;
+    inquiry.deletedBySeller = false;
 
     inquiry.messages.push({
       sender: currentUserId,
@@ -163,34 +201,47 @@ export const createInquiry = asyncHandler(async (req, res) => {
   }
 
   const populated = await populateInquiry(inquiry._id);
-  const formatted = formatInquiryForResponse(populated);
-  const latestMessage = formatted.messages[formatted.messages.length - 1];
+  const buyerIdStr = currentUserId.toString();
+  const sellerIdStr = car.seller.toString();
+
+  const buyerFormatted = formatInquiryForResponse(populated, buyerIdStr);
+  const sellerFormatted = formatInquiryForResponse(populated, sellerIdStr);
+  const latestMessage =
+    buyerFormatted.messages[buyerFormatted.messages.length - 1];
 
   // Broadcast live event over Socket.IO
   const io = getIO();
   if (io) {
-    const buyerIdStr = currentUserId.toString();
-    const sellerIdStr = car.seller.toString();
-    const threadIdStr = formatted._id.toString();
+    const threadIdStr = buyerFormatted._id.toString();
 
-    if (isNewThread) {
-      io.to(`user:${sellerIdStr}`).emit("inquiry:new", { inquiry: formatted });
-      io.to(`user:${buyerIdStr}`).emit("inquiry:new", { inquiry: formatted });
-    } else {
-      io.to(`thread:${threadIdStr}`).emit("inquiry:message", {
-        inquiryId: threadIdStr,
-        message: latestMessage,
-        inquiry: formatted,
+    if (isNewThread || wasHiddenForSeller) {
+      io.to(`user:${sellerIdStr}`).emit("inquiry:new", {
+        inquiry: sellerFormatted,
       });
+    } else {
       io.to(`user:${sellerIdStr}`).emit("inquiry:updated", {
         inquiryId: threadIdStr,
         message: latestMessage,
-        inquiry: formatted,
+        inquiry: sellerFormatted,
       });
+    }
+
+    if (isNewThread || wasHiddenForBuyer) {
+      io.to(`user:${buyerIdStr}`).emit("inquiry:new", {
+        inquiry: buyerFormatted,
+      });
+    } else {
       io.to(`user:${buyerIdStr}`).emit("inquiry:updated", {
         inquiryId: threadIdStr,
         message: latestMessage,
-        inquiry: formatted,
+        inquiry: buyerFormatted,
+      });
+    }
+
+    if (!isNewThread) {
+      io.to(`thread:${threadIdStr}`).emit("inquiry:message", {
+        inquiryId: threadIdStr,
+        message: latestMessage,
       });
     }
   }
@@ -198,14 +249,14 @@ export const createInquiry = asyncHandler(async (req, res) => {
   return res.status(isNewThread ? 201 : 200).json(
     new ApiResponse(
       isNewThread ? 201 : 200,
-      { inquiry: formatted },
+      { inquiry: buyerFormatted },
       "Inquiry sent to seller successfully"
     )
   );
 });
 
 /**
- * @desc    Get user's inquiries (Supports filtering as 'seller' or 'buyer')
+ * @desc    Get user's inquiries (excludes chats deleted by the current user)
  * @route   GET /api/v1/inquiries
  * @access  Private (Requires login)
  */
@@ -216,11 +267,16 @@ export const getMyInquiries = asyncHandler(async (req, res) => {
 
   let query = {};
   if (role === "seller") {
-    query = { seller: userId };
+    query = { seller: userId, deletedBySeller: { $ne: true } };
   } else if (role === "buyer") {
-    query = { buyer: userId };
+    query = { buyer: userId, deletedByBuyer: { $ne: true } };
   } else {
-    query = { $or: [{ seller: userId }, { buyer: userId }] };
+    query = {
+      $or: [
+        { seller: userId, deletedBySeller: { $ne: true } },
+        { buyer: userId, deletedByBuyer: { $ne: true } },
+      ],
+    };
   }
 
   const rawInquiries = await Inquiry.find(query)
@@ -229,7 +285,9 @@ export const getMyInquiries = asyncHandler(async (req, res) => {
     .populate("seller", POPULATE_USER_FIELDS)
     .sort({ lastMessageAt: -1, createdAt: -1 });
 
-  const inquiries = rawInquiries.map(formatInquiryForResponse);
+  const inquiries = rawInquiries.map((doc) =>
+    formatInquiryForResponse(doc, userIdStr)
+  );
 
   const totalUnread = inquiries.reduce((sum, inq) => {
     const sellerId = (inq.seller?._id || inq.seller)?.toString();
@@ -273,9 +331,13 @@ export const getInquiryById = asyncHandler(async (req, res) => {
     );
   }
 
+  const isSeller = currentUserId === sellerId;
+  if ((isSeller && inquiry.deletedBySeller) || (!isSeller && inquiry.deletedByBuyer)) {
+    throw new ApiError(404, "Inquiry has been deleted from your inbox");
+  }
+
   ensureLegacyMessagesBackfilled(inquiry);
 
-  const isSeller = currentUserId === sellerId;
   const otherUserId = isSeller ? buyerId : sellerId;
   let dirty = false;
 
@@ -288,7 +350,6 @@ export const getInquiryById = asyncHandler(async (req, res) => {
     dirty = true;
   }
 
-  // Mark individual messages read by viewer
   inquiry.messages.forEach((msg) => {
     if (!msg.readBy.some((id) => id.toString() === currentUserId)) {
       msg.readBy.push(req.user._id);
@@ -310,7 +371,7 @@ export const getInquiryById = asyncHandler(async (req, res) => {
     }
   }
 
-  const formatted = formatInquiryForResponse(inquiry);
+  const formatted = formatInquiryForResponse(inquiry, currentUserId);
 
   return res.status(200).json(
     new ApiResponse(
@@ -349,13 +410,17 @@ export const sendInquiryMessage = asyncHandler(async (req, res) => {
 
   const now = new Date();
   const isSenderBuyer = currentUserId === buyerId;
-  const recipientId = isSenderBuyer ? sellerId : buyerId;
+
+  // If either side deleted previously, sending a fresh reply re-opens visibility (cutoff keeps old history hidden for whoever deleted it)
+  inquiry.deletedByBuyer = false;
+  inquiry.deletedBySeller = false;
 
   const newMessageObj = {
     sender: req.user._id,
     text,
     messageType: messageType || "text",
-    offerPrice: messageType === "offer" && offerPrice ? Number(offerPrice) : null,
+    offerPrice:
+      messageType === "offer" && offerPrice ? Number(offerPrice) : null,
     readBy: [req.user._id],
     createdAt: now,
   };
@@ -381,22 +446,33 @@ export const sendInquiryMessage = asyncHandler(async (req, res) => {
   await inquiry.save();
 
   const populated = await populateInquiry(inquiry._id);
-  const formatted = formatInquiryForResponse(populated);
-  const savedMessage = formatted.messages[formatted.messages.length - 1];
+  const buyerFormatted = formatInquiryForResponse(populated, buyerId);
+  const sellerFormatted = formatInquiryForResponse(populated, sellerId);
+  const viewerFormatted = isSenderBuyer ? buyerFormatted : sellerFormatted;
+  const savedMessage =
+    viewerFormatted.messages[viewerFormatted.messages.length - 1];
 
-  // Emit real-time Socket.IO events
+  // Emit real-time Socket.IO events tailored per participant
   const io = getIO();
   if (io) {
-    const threadIdStr = formatted._id.toString();
-    const payload = {
+    const threadIdStr = viewerFormatted._id.toString();
+
+    io.to(`thread:${threadIdStr}`).emit("inquiry:message", {
       inquiryId: threadIdStr,
       message: savedMessage,
-      inquiry: formatted,
-    };
+    });
 
-    io.to(`thread:${threadIdStr}`).emit("inquiry:message", payload);
-    io.to(`user:${recipientId}`).emit("inquiry:updated", payload);
-    io.to(`user:${currentUserId}`).emit("inquiry:updated", payload);
+    io.to(`user:${buyerId}`).emit("inquiry:updated", {
+      inquiryId: threadIdStr,
+      message: savedMessage,
+      inquiry: buyerFormatted,
+    });
+
+    io.to(`user:${sellerId}`).emit("inquiry:updated", {
+      inquiryId: threadIdStr,
+      message: savedMessage,
+      inquiry: sellerFormatted,
+    });
   }
 
   return res.status(201).json(
@@ -404,7 +480,7 @@ export const sendInquiryMessage = asyncHandler(async (req, res) => {
       201,
       {
         message: savedMessage,
-        inquiry: formatted,
+        inquiry: viewerFormatted,
       },
       "Reply sent successfully"
     )
@@ -472,7 +548,7 @@ export const markInquiryAsRead = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Delete an inquiry (Participants only)
+ * @desc    Delete an inquiry ONLY for the requesting user (keeps counterpart's copy intact)
  * @route   DELETE /api/v1/inquiries/:id
  * @access  Private (Participants only)
  */
@@ -495,17 +571,42 @@ export const deleteInquiry = asyncHandler(async (req, res) => {
   }
 
   const inquiryIdStr = inquiry._id.toString();
-  await inquiry.deleteOne();
+  const now = new Date();
 
+  if (currentUserId === buyerId) {
+    inquiry.deletedByBuyer = true;
+    inquiry.buyerDeletedAt = now;
+    inquiry.unreadByBuyer = 0;
+  }
+
+  if (currentUserId === sellerId) {
+    inquiry.deletedBySeller = true;
+    inquiry.sellerDeletedAt = now;
+    inquiry.unreadBySeller = 0;
+  }
+
+  // Only hard-delete from MongoDB when BOTH participants have deleted the chat
+  if (inquiry.deletedByBuyer && inquiry.deletedBySeller) {
+    await inquiry.deleteOne();
+  } else {
+    await inquiry.save();
+  }
+
+  // Only notify the user who deleted it — leave the other participant's inbox untouched
   const io = getIO();
   if (io) {
-    const payload = { inquiryId: inquiryIdStr };
-    io.to(`thread:${inquiryIdStr}`).emit("inquiry:deleted", payload);
-    io.to(`user:${buyerId}`).emit("inquiry:deleted", payload);
-    io.to(`user:${sellerId}`).emit("inquiry:deleted", payload);
+    io.to(`user:${currentUserId}`).emit("inquiry:deleted", {
+      inquiryId: inquiryIdStr,
+    });
   }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, null, "Inquiry deleted successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        null,
+        "Conversation removed from your inbox"
+      )
+    );
 });

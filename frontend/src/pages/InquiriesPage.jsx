@@ -120,6 +120,7 @@ export default function InquiriesPage({ onOpenAuth }) {
   const typingTimeoutRef = useRef(null);
   const isTypingEmittedRef = useRef(false);
   const selectedIdRef = useRef(selectedId);
+  const initialThreadParamRef = useRef(searchParams.get("thread"));
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -147,7 +148,7 @@ export default function InquiriesPage({ onOpenAuth }) {
       }
 
       // Auto-select requested thread or first item if nothing is selected
-      const urlThread = searchParams.get("thread");
+      const urlThread = initialThreadParamRef.current;
       if (urlThread && list.some((i) => String(i._id) === String(urlThread))) {
         setSelectedId(urlThread);
         setMobileShowChat(true);
@@ -160,7 +161,7 @@ export default function InquiriesPage({ onOpenAuth }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, currentUserId, checkUsersOnline, searchParams]);
+  }, [isAuthenticated, currentUserId, checkUsersOnline]);
 
   useEffect(() => {
     fetchInquiries();
@@ -477,15 +478,24 @@ export default function InquiriesPage({ onOpenAuth }) {
     if (!confirmDeleteId) return;
     try {
       setDeletingId(confirmDeleteId);
-      await deleteInquiry(confirmDeleteId);
-      setInquiries((prev) => {
-        const remaining = prev.filter((item) => String(item._id) !== String(confirmDeleteId));
-        if (String(selectedId) === String(confirmDeleteId)) {
-          setSelectedId(remaining[0]?._id || null);
-          setMobileShowChat(false);
+      const deletedTargetId = confirmDeleteId;
+      await deleteInquiry(deletedTargetId);
+      setInquiries((prev) =>
+        prev.filter((item) => String(item._id) !== String(deletedTargetId))
+      );
+      if (String(selectedId) === String(deletedTargetId)) {
+        const nextThread = inquiries.find(
+          (item) => String(item._id) !== String(deletedTargetId)
+        );
+        setSelectedId(nextThread?._id || null);
+        setMobileShowChat(false);
+        if (searchParams.get("thread") === String(deletedTargetId)) {
+          const nextParams = new URLSearchParams(searchParams);
+          if (nextThread?._id) nextParams.set("thread", nextThread._id);
+          else nextParams.delete("thread");
+          setSearchParams(nextParams, { replace: true });
         }
-        return remaining;
-      });
+      }
       refreshUnreadCount();
       setActionNotice({
         type: "success",
@@ -1227,10 +1237,10 @@ export default function InquiriesPage({ onOpenAuth }) {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-on-surface">
-                  Delete Conversation?
+                  Delete From Your Inbox?
                 </h3>
                 <p className="text-xs text-on-surface-variant">
-                  This permanently removes the chat history from your inbox.
+                  This removes the chat history from your inbox only. The other participant keeps their copy.
                 </p>
               </div>
             </div>
