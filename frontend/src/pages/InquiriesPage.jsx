@@ -116,10 +116,11 @@ export default function InquiriesPage({ onOpenAuth }) {
   const [deletingId, setDeletingId] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
 
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const isTypingEmittedRef = useRef(false);
   const selectedIdRef = useRef(selectedId);
+  const initialThreadParamRef = useRef(searchParams.get("thread"));
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -147,7 +148,7 @@ export default function InquiriesPage({ onOpenAuth }) {
       }
 
       // Auto-select requested thread or first item if nothing is selected
-      const urlThread = searchParams.get("thread");
+      const urlThread = initialThreadParamRef.current;
       if (urlThread && list.some((i) => String(i._id) === String(urlThread))) {
         setSelectedId(urlThread);
         setMobileShowChat(true);
@@ -160,7 +161,7 @@ export default function InquiriesPage({ onOpenAuth }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, currentUserId, checkUsersOnline, searchParams]);
+  }, [isAuthenticated, currentUserId, checkUsersOnline]);
 
   useEffect(() => {
     fetchInquiries();
@@ -373,7 +374,12 @@ export default function InquiriesPage({ onOpenAuth }) {
   );
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
   }, [selectedThread?.messages?.length, selectedId, typingByThread[selectedId]]);
 
   // Emit typing indicators while composing
@@ -472,15 +478,24 @@ export default function InquiriesPage({ onOpenAuth }) {
     if (!confirmDeleteId) return;
     try {
       setDeletingId(confirmDeleteId);
-      await deleteInquiry(confirmDeleteId);
-      setInquiries((prev) => {
-        const remaining = prev.filter((item) => String(item._id) !== String(confirmDeleteId));
-        if (String(selectedId) === String(confirmDeleteId)) {
-          setSelectedId(remaining[0]?._id || null);
-          setMobileShowChat(false);
+      const deletedTargetId = confirmDeleteId;
+      await deleteInquiry(deletedTargetId);
+      setInquiries((prev) =>
+        prev.filter((item) => String(item._id) !== String(deletedTargetId))
+      );
+      if (String(selectedId) === String(deletedTargetId)) {
+        const nextThread = inquiries.find(
+          (item) => String(item._id) !== String(deletedTargetId)
+        );
+        setSelectedId(nextThread?._id || null);
+        setMobileShowChat(false);
+        if (searchParams.get("thread") === String(deletedTargetId)) {
+          const nextParams = new URLSearchParams(searchParams);
+          if (nextThread?._id) nextParams.set("thread", nextThread._id);
+          else nextParams.delete("thread");
+          setSearchParams(nextParams, { replace: true });
         }
-        return remaining;
-      });
+      }
       refreshUnreadCount();
       setActionNotice({
         type: "success",
@@ -707,7 +722,7 @@ export default function InquiriesPage({ onOpenAuth }) {
           </Link>
         </div>
       ) : (
-        <div className="h-[640px] lg:h-[calc(100vh-230px)] min-h-[540px] rounded-3xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12">
+        <div className="h-[calc(100vh-225px)] min-h-[480px] max-h-[680px] rounded-3xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12">
           {/* LEFT PANE: Conversations Sidebar */}
           <aside
             className={`md:col-span-5 lg:col-span-4 border-r border-outline-variant/30 flex flex-col bg-surface-container-low/40 overflow-hidden ${
@@ -991,7 +1006,10 @@ export default function InquiriesPage({ onOpenAuth }) {
                 )}
 
                 {/* Messages Stream */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-surface-container-low/20">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-surface-container-low/20"
+                >
                   {dedupeMessages(selectedThread.messages || []).map((msg, idx) => {
                     const senderId = String(msg.sender?._id || msg.sender || "");
                     const isMine = senderId === currentUserId;
@@ -1092,8 +1110,6 @@ export default function InquiriesPage({ onOpenAuth }) {
                       </div>
                     </div>
                   )}
-
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Composer Area */}
@@ -1221,10 +1237,10 @@ export default function InquiriesPage({ onOpenAuth }) {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-on-surface">
-                  Delete Conversation?
+                  Delete From Your Inbox?
                 </h3>
                 <p className="text-xs text-on-surface-variant">
-                  This permanently removes the chat history from your inbox.
+                  This removes the chat history from your inbox only. The other participant keeps their copy.
                 </p>
               </div>
             </div>

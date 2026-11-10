@@ -98,6 +98,22 @@ const inquirySchema = new mongoose.Schema(
       enum: ["unread", "read"],
       default: "unread",
     },
+    deletedByBuyer: {
+      type: Boolean,
+      default: false,
+    },
+    deletedBySeller: {
+      type: Boolean,
+      default: false,
+    },
+    buyerDeletedAt: {
+      type: Date,
+      default: null,
+    },
+    sellerDeletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
