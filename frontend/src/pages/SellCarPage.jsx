@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import {
   createCar,
   getMyListings,
@@ -12,6 +13,7 @@ import { cities } from "../data/filters";
 
 export default function SellCarPage({ onOpenAuth }) {
   const { user, isAuthenticated, isSeller, isAdmin } = useAuth();
+  const { unreadCount } = useSocket();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active tab: "create" or "listings"
@@ -330,6 +332,18 @@ export default function SellCarPage({ onOpenAuth }) {
             <span className="material-symbols-outlined text-base">garage</span>
             My Listings ({myListings.length})
           </button>
+          <Link
+            to="/inquiries?tab=received"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest/50 transition-all"
+          >
+            <span className="material-symbols-outlined text-base text-primary">forum</span>
+            <span>Buyer Inbox</span>
+            {unreadCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white leading-none">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 

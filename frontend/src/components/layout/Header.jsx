@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useSocket } from "../../context/SocketContext";
 
 export default function Header({
   favoritesCount = 0,
@@ -10,6 +11,7 @@ export default function Header({
   onOpenAuth,
 }) {
   const { user, isAuthenticated, logout } = useAuth();
+  const { unreadCount, isConnected } = useSocket();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -113,15 +115,22 @@ export default function Header({
             )}
           </a>
 
-          {/* Notifications Button */}
-          <button
-            aria-label="Notifications"
+          {/* Messages / Live Inquiries Link with Real-Time Unread Badge */}
+          <Link
+            to="/inquiries"
+            aria-label="Messages & Inquiries"
+            title={isConnected ? "Messages & Inquiries (Live)" : "Messages & Inquiries"}
             className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
-            type="button"
           >
-            <span className="material-symbols-outlined text-xl">notifications</span>
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"></span>
-          </button>
+            <span className="material-symbols-outlined text-xl">forum</span>
+            {unreadCount > 0 ? (
+              <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white font-label-sm text-[10px] font-bold leading-none shadow-sm animate-pulse">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : isAuthenticated && isConnected ? (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
+            ) : null}
+          </Link>
 
           {/* Dark / Light Mode Toggle */}
           <button
@@ -186,10 +195,17 @@ export default function Header({
                       <Link
                         to="/inquiries"
                         onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                        className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base">forum</span>
-                        Inquiries & Messages
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base">forum</span>
+                          <span>Inquiries & Messages</span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                            {unreadCount}
+                          </span>
+                        )}
                       </Link>
 
                       <a
