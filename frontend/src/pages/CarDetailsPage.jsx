@@ -21,6 +21,7 @@ export default function CarDetailsPage({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSendingInquiry, setIsSendingInquiry] = useState(false);
   const [inquirySuccess, setInquirySuccess] = useState(false);
+  const [createdInquiryId, setCreatedInquiryId] = useState(null);
   const [inquiryError, setInquiryError] = useState("");
 
   // Fetch single car from API
@@ -60,7 +61,9 @@ export default function CarDetailsPage({
     try {
       setIsSendingInquiry(true);
       setInquiryError("");
-      await sendCarInquiry(id, { message, phoneNumber });
+      const res = await sendCarInquiry(id, { message, phoneNumber });
+      const returnedId = res?.data?.inquiry?._id || res?.inquiry?._id || null;
+      setCreatedInquiryId(returnedId);
       setInquirySuccess(true);
     } catch (err) {
       setInquiryError(err.message || "Failed to send inquiry to seller.");
@@ -365,25 +368,41 @@ export default function CarDetailsPage({
               </h3>
 
               {isOwner ? (
-                <div className="p-3.5 rounded-xl bg-surface-container text-xs text-on-surface-variant border border-outline-variant/30">
-                  ℹ️ This is your listing. Buyers will send inquiries here directly to your account.
+                <div className="p-3.5 rounded-xl bg-surface-container text-xs text-on-surface-variant border border-outline-variant/30 space-y-2.5">
+                  <p>ℹ️ This is your listing. Buyers will send inquiries here directly to your account.</p>
+                  <Link
+                    to="/inquiries?tab=received"
+                    className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-sm">forum</span>
+                    Open Seller Inbox
+                  </Link>
                 </div>
               ) : inquirySuccess ? (
-                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-2">
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-3">
                   <div className="flex items-center gap-2 font-bold text-sm">
                     <span className="material-symbols-outlined text-lg">check_circle</span>
                     Inquiry Sent Successfully!
                   </div>
                   <p className="text-xs text-on-surface-variant leading-relaxed">
-                    Your inquiry has been delivered to {car.seller?.name || "the seller"}. They will contact you shortly.
+                    Your inquiry has been delivered to {car.seller?.name || "the seller"}. Continue chatting in real time below.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setInquirySuccess(false)}
-                    className="text-xs font-semibold underline text-primary mt-1"
-                  >
-                    Send another message
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Link
+                      to={createdInquiryId ? `/inquiries?thread=${createdInquiryId}` : "/inquiries"}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-sm hover:opacity-95 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-sm">forum</span>
+                      Open Live Chat
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setInquirySuccess(false)}
+                      className="text-xs font-semibold underline text-primary px-2 py-1"
+                    >
+                      Send another
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleInquirySubmit} className="space-y-3">
