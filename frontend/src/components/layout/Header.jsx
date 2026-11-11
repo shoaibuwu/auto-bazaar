@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
 
@@ -10,6 +10,7 @@ export default function Header({
   onOpenSearch,
   onOpenAuth,
 }) {
+  const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const { unreadCount, isConnected } = useSocket();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -48,20 +49,34 @@ export default function Header({
         {/* Desktop Navigation Links (Pill Bar matching design screenshot) */}
         <nav className="hidden md:flex items-center p-1 rounded-full bg-surface-container/60 border border-outline-variant/30 text-sm">
           <Link
-            aria-current="page"
-            className="px-4 py-1.5 rounded-full transition-all bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+            aria-current={location.pathname === "/" ? "page" : undefined}
+            className={`px-4 py-1.5 rounded-full transition-all ${
+              location.pathname === "/"
+                ? "bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+                : "font-medium text-on-surface-variant hover:text-on-surface"
+            }`}
             to="/"
           >
             Used Cars
           </Link>
-          <a
-            className="px-4 py-1.5 rounded-full font-medium text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#inspections"
+          <Link
+            aria-current={location.pathname === "/inspections" ? "page" : undefined}
+            className={`px-4 py-1.5 rounded-full transition-all ${
+              location.pathname === "/inspections"
+                ? "bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+                : "font-medium text-on-surface-variant hover:text-on-surface"
+            }`}
+            to="/inspections"
           >
             Inspections
-          </a>
+          </Link>
           <Link
-            className="px-4 py-1.5 rounded-full font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+            aria-current={location.pathname === "/sell" ? "page" : undefined}
+            className={`px-4 py-1.5 rounded-full transition-all ${
+              location.pathname === "/sell"
+                ? "bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+                : "font-medium text-on-surface-variant hover:text-on-surface"
+            }`}
             to="/sell"
           >
             Sell Your Car

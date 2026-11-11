@@ -89,6 +89,26 @@ const carSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "A car listing must belong to a seller"],
     },
+    inspectionScore: {
+      type: Number,
+      min: [0, "Inspection score must be between 0 and 10"],
+      max: [10, "Inspection score must be between 0 and 10"],
+      default: null,
+    },
+    inspectionStatus: {
+      type: String,
+      enum: ["not_inspected", "scheduled", "certified", "verified", "flagged"],
+      default: "not_inspected",
+    },
+    lastInspectedAt: {
+      type: Date,
+      default: null,
+    },
+    latestInspectionBooking: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InspectionBooking",
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -101,6 +121,7 @@ carSchema.index({ seller: 1, status: 1 });
 carSchema.index({ status: 1, price: 1 });
 carSchema.index({ status: 1, make: 1, model: 1 });
 carSchema.index({ status: 1, year: -1 });
+carSchema.index({ status: 1, inspectionScore: -1 });
 
 const Car = mongoose.model("Car", carSchema);
 

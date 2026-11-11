@@ -13,6 +13,22 @@ export const formatCar = (car) => {
     ? (rawImg.startsWith("http") ? rawImg : `${BACKEND_BASE}${rawImg}`)
     : "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80";
 
+  const hasNumericScore =
+    typeof car.inspectionScore === "number" && !Number.isNaN(car.inspectionScore);
+  const inspectionStatus =
+    car.inspectionStatus || (hasNumericScore ? "verified" : "not_inspected");
+  const inspectionScoreFormatted = hasNumericScore
+    ? `${Number(car.inspectionScore).toFixed(1)}/10`
+    : null;
+  const isCertified =
+    hasNumericScore &&
+    (inspectionStatus === "certified" || Number(car.inspectionScore) >= 9.0);
+  const isVerified =
+    hasNumericScore &&
+    (inspectionStatus === "certified" ||
+      inspectionStatus === "verified" ||
+      Number(car.inspectionScore) >= 7.5);
+
   return {
     id: car._id,
     title: `${car.year} ${car.make} ${car.model}`,
@@ -26,8 +42,13 @@ export const formatCar = (car) => {
     city: car.city ? (car.city.charAt(0).toUpperCase() + car.city.slice(1)) : "Pakistan",
     bodyType: car.bodyType || "sedan",
     transmission: car.transmission || "Automatic",
-    inspectionScore: "9.5/10",
-    isVerified: true,
+    inspectionScoreValue: hasNumericScore ? Number(car.inspectionScore) : null,
+    inspectionScore: inspectionScoreFormatted,
+    inspectionStatus,
+    lastInspectedAt: car.lastInspectedAt || null,
+    latestInspectionBooking: car.latestInspectionBooking || null,
+    isCertified,
+    isVerified,
     image: imgUrl,
     images: (car.images || []).map((img) => (img.startsWith("http") ? img : `${BACKEND_BASE}${img}`)),
     description: car.description || "",

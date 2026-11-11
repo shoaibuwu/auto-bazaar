@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getCarById } from "../api/cars.api";
+import { getLatestCarInspection } from "../api/inspections.api";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
@@ -15,17 +16,22 @@ export default function CarDetailsPage({
   const { onlineMap, checkUsersOnline, unreadCount } = useSocket();
 
   const [car, setCar] = useState(null);
+  const [inspectionReport, setInspectionReport] = useState(null);
   const [activeImage, setActiveImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch single car from API
+  // Fetch single car + latest completed DB inspection report from API
   const fetchCarDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await getCarById(id);
+      const [data, reportData] = await Promise.all([
+        getCarById(id),
+        getLatestCarInspection(id).catch(() => null),
+      ]);
       setCar(data);
+      setInspectionReport(reportData);
       setActiveImage(data.image);
     } catch (err) {
       setError(err.message || "Failed to load car details");
@@ -142,13 +148,36 @@ export default function CarDetailsPage({
               className="w-full h-full object-cover transition-all duration-300"
             />
 
-            {/* Verification Badge */}
-            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-emerald-600 dark:text-emerald-400 text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-md border border-outline-variant/30">
-              <span className="material-symbols-outlined text-base text-emerald-500">
-                check_circle
-              </span>
-              Certified {car.inspectionScore}
-            </div>
+            {/* Real DB Inspection Status Badge */}
+            {car.isVerified ? (
+              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-emerald-600 dark:text-emerald-400 text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-md border border-outline-variant/30">
+                <span className="material-symbols-outlined text-base text-emerald-500">
+                  check_circle
+                </span>
+                {car.isCertified ? "Certified" : "Verified"} {car.inspectionScore}
+              </div>
+            ) : car.inspectionStatus === "scheduled" ? (
+              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-primary text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-md border border-outline-variant/30">
+                <span className="material-symbols-outlined text-base">
+                  event_available
+                </span>
+                Inspection Scheduled
+              </div>
+            ) : car.inspectionStatus === "flagged" ? (
+              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-rose-600 dark:text-rose-400 text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-md border border-rose-500/30">
+                <span className="material-symbols-outlined text-base">
+                  warning
+                </span>
+                Flagged {car.inspectionScore}
+              </div>
+            ) : (
+              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-on-surface-variant text-xs font-semibold tracking-wide flex items-center gap-1.5 shadow-md border border-outline-variant/30">
+                <span className="material-symbols-outlined text-base text-outline">
+                  pending_actions
+                </span>
+                Pending Inspection
+              </div>
+            )}
 
             {/* Favorite Button */}
             <button
@@ -198,7 +227,15 @@ export default function CarDetailsPage({
                 <span className="material-symbols-outlined text-base text-outline">location_on</span>
                 <span>{car.city}, Pakistan</span>
                 <span>•</span>
-                <span>Verified Inspection Passed</span>
+                <span>
+                  {car.isVerified
+                    ? `${car.isCertified ? "Certified" : "Verified"} Inspection (${car.inspectionScore})`
+                    : car.inspectionStatus === "scheduled"
+                    ? "Inspection Slot Scheduled"
+                    : car.inspectionStatus === "flagged"
+                    ? `Inspection Flagged (${car.inspectionScore})`
+                    : "Awaiting 204-Point Inspection"}
+                </span>
               </p>
             </div>
             <div className="lg:hidden text-2xl font-bold text-primary">
@@ -268,9 +305,25 @@ export default function CarDetailsPage({
                   verified
                 </span>
                 <div>
-                  <div className="text-[11px] font-semibold text-on-surface-variant uppercase">Condition</div>
-                  <div className="font-bold text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {car.inspectionScore} Certified
+                  <div className="text-[11px] font-semibold text-on-surface-variant uppercase">Inspection</div>
+                  <div
+                    className={`font-bold text-sm mt-0.5 ${
+                      car.isVerified
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : car.inspectionStatus === "flagged"
+                        ? "text-rose-600 dark:text-rose-400"
+                        : car.inspectionStatus === "scheduled"
+                        ? "text-primary"
+                        : "text-on-surface-variant"
+                    }`}
+                  >
+                    {car.isVerified
+                      ? `${car.inspectionScore} ${car.isCertified ? "Certified" : "Verified"}`
+                      : car.inspectionStatus === "scheduled"
+                      ? "Scheduled"
+                      : car.inspectionStatus === "flagged"
+                      ? `${car.inspectionScore} Flagged`
+                      : "Not Inspected"}
                   </div>
                 </div>
               </div>
@@ -278,22 +331,84 @@ export default function CarDetailsPage({
             </div>
           </div>
 
-          {/* Inspection Report Guarantee Card */}
-          <div className="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-2xl">verified_user</span>
+          {/* Live Database Inspection Report / Booking Card */}
+          <div className="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    car.isVerified
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : car.inspectionStatus === "flagged"
+                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-2xl">verified_user</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-on-surface">
+                    {inspectionReport
+                      ? `204-Point Inspection Report • ${inspectionReport.grade} (${Number(
+                          inspectionReport.score
+                        ).toFixed(1)}/10)`
+                      : car.inspectionStatus === "scheduled"
+                      ? "Inspection Appointment Scheduled"
+                      : "AutoBazaar 204-Point Inspection Available"}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    {inspectionReport
+                      ? `Inspected at ${inspectionReport.hub?.city || car.city} Hub${
+                          inspectionReport.completedAt
+                            ? ` on ${new Date(inspectionReport.completedAt).toLocaleDateString("en-PK")}`
+                            : ""
+                        } by ${inspectionReport.inspectorName || "Certified Inspector"}.`
+                      : "Request an ultrasonic paint-depth scan, OEM OBD-II telemetry audit, road test, and provincial Excise verification at our nearest hub."}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-on-surface">AutoBazaar 200+ Point Inspection Guaranteed</h3>
-                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                  Full diagnostics performed on chassis integrity, OBD-II ECU scanner, engine compression, and NADRA biometric verification.
-                </p>
+
+              <Link
+                to={`/inspections?carId=${car.id}#book-inspection`}
+                className="shrink-0 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-xs font-semibold text-primary transition-colors flex items-center gap-1"
+              >
+                <span>{inspectionReport ? "Inspection Standards" : "Book Inspection"}</span>
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
+            </div>
+
+            {inspectionReport?.domainScores && (
+              <div className="pt-3 border-t border-outline-variant/25 space-y-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                  {[
+                    ["Engine", inspectionReport.domainScores.engine],
+                    ["Chassis", inspectionReport.domainScores.chassis],
+                    ["Suspension", inspectionReport.domainScores.suspension],
+                    ["Electrical", inspectionReport.domainScores.interior],
+                    ["Road Test", inspectionReport.domainScores.road],
+                    ["Excise", inspectionReport.domainScores.documents],
+                  ].map(([label, val]) => (
+                    <div
+                      key={label}
+                      className="px-2.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/25 text-center"
+                    >
+                      <div className="text-[10px] uppercase font-semibold text-on-surface-variant">
+                        {label}
+                      </div>
+                      <div className="text-xs font-bold font-mono text-on-surface mt-0.5">
+                        {typeof val === "number" ? `${val.toFixed(1)}/10` : "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {inspectionReport.inspectorNotes && (
+                  <p className="text-xs text-on-surface-variant bg-surface-container-low px-3 py-2 rounded-xl border border-outline-variant/25">
+                    <span className="font-semibold text-on-surface">Inspector Notes:</span>{" "}
+                    {inspectionReport.inspectorNotes}
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="shrink-0 px-3 py-1.5 rounded-lg bg-surface-container text-xs font-semibold text-primary">
-              Score {car.inspectionScore}
-            </div>
+            )}
           </div>
 
           {/* Description Section */}

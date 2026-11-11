@@ -9,6 +9,7 @@ import CarDetailsPage from "./pages/CarDetailsPage";
 import SellCarPage from "./pages/SellCarPage";
 import AdminModerationPage from "./pages/AdminModerationPage";
 import InquiriesPage from "./pages/InquiriesPage";
+import InspectionsPage from "./pages/InspectionsPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
@@ -54,6 +55,13 @@ export default function App() {
 
   // Active mobile bottom nav tab
   const [activeMobileTab, setActiveMobileTab] = useState("browse");
+
+  // Keep mobile bottom nav tab highlighted for current route
+  useEffect(() => {
+    if (location.pathname === "/sell") setActiveMobileTab("sell");
+    else if (location.pathname === "/inspections") setActiveMobileTab("inspection");
+    else if (location.pathname === "/") setActiveMobileTab("browse");
+  }, [location.pathname]);
 
   // Sync user favorites from MongoDB when logged in
   const loadUserFavorites = useCallback(async () => {
@@ -109,6 +117,8 @@ export default function App() {
     setActiveMobileTab(tabId);
     if (tabId === "sell") {
       navigate("/sell");
+    } else if (tabId === "inspection") {
+      navigate("/inspections");
     } else if (tabId === "account") {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
@@ -174,6 +184,16 @@ export default function App() {
           <Route
             path="/inquiries"
             element={<InquiriesPage onOpenAuth={() => setIsAuthModalOpen(true)} />}
+          />
+          <Route
+            path="/inspections"
+            element={
+              <InspectionsPage
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+              />
+            }
           />
         </Routes>
       </main>
