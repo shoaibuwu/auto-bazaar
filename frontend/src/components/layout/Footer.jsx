@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -74,9 +75,9 @@ export default function Footer() {
             <a className="hover:text-on-surface transition-colors" href="#terms">
               Terms of Service
             </a>
-            <a className="hover:text-on-surface transition-colors" href="#inspection-criteria">
+            <Link className="hover:text-on-surface transition-colors" to="/inspections">
               Inspection Criteria
-            </a>
+            </Link>
           </div>
         </div>
       </div>

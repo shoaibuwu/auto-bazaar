@@ -19,14 +19,14 @@ export default function FeaturedCars({
           <span className="font-body-sm text-body-sm text-on-surface-variant">
             {isLoading
               ? "Fetching live inventory from database..."
-              : `Showing ${cars.length} verified vehicle${cars.length === 1 ? "" : "s"} from database`}
+              : `Showing ${cars.length} published vehicle${cars.length === 1 ? "" : "s"} from database`}
           </span>
         </div>
         <a
           className="font-title text-body-md text-on-surface hover:text-primary transition-colors flex items-center gap-1 font-medium group"
           href="#browse"
         >
-          <span>View all {cars.length} verified cars</span>
+          <span>View all {cars.length} live cars</span>
           <span className="material-symbols-outlined text-base transition-transform group-hover:translate-x-1">
             arrow_forward
           </span>
@@ -91,15 +91,29 @@ export default function FeaturedCars({
                     src={car.image}
                   />
 
-                  {/* Verification Badge */}
-                  {car.isVerified && (
+                  {/* Real DB Inspection Status Badge */}
+                  {car.isVerified ? (
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-emerald-600 dark:text-emerald-400 font-label-sm text-[11px] font-semibold tracking-wide flex items-center gap-1 shadow-sm border border-outline-variant/30">
                       <span className="material-symbols-outlined text-sm leading-none text-emerald-500">
                         check_circle
                       </span>
-                      Certified
+                      {car.isCertified ? "Certified" : "Verified"} {car.inspectionScore}
                     </div>
-                  )}
+                  ) : car.inspectionStatus === "scheduled" ? (
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-primary font-label-sm text-[11px] font-semibold tracking-wide flex items-center gap-1 shadow-sm border border-outline-variant/30">
+                      <span className="material-symbols-outlined text-sm leading-none">
+                        event_available
+                      </span>
+                      Inspection Scheduled
+                    </div>
+                  ) : car.inspectionStatus === "flagged" ? (
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-surface-container-lowest/95 backdrop-blur-md text-rose-600 dark:text-rose-400 font-label-sm text-[11px] font-semibold tracking-wide flex items-center gap-1 shadow-sm border border-rose-500/30">
+                      <span className="material-symbols-outlined text-sm leading-none">
+                        warning
+                      </span>
+                      Flagged {car.inspectionScore}
+                    </div>
+                  ) : null}
 
                   {/* Favorite Heart Button */}
                   <button
