@@ -58,7 +58,7 @@ const inquirySchema = new mongoose.Schema(
       type: String,
       required: [true, "Message is required"],
       trim: true,
-      minlength: [2, "Message must be at least 2 characters long"],
+      minlength: [1, "Message cannot be empty"],
       maxlength: [1500, "Message cannot exceed 1500 characters"],
     },
     // Full two-way real-time conversation thread

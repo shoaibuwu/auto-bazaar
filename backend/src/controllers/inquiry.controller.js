@@ -112,7 +112,7 @@ async function populateInquiry(inquiryId) {
  */
 export const createInquiry = asyncHandler(async (req, res) => {
   const { carId } = req.params;
-  const { message, phone } = req.body;
+  const { message, phone, messageType = "text", offerPrice } = req.body;
   const currentUserId = req.user._id;
 
   const car = await Car.findById(carId);
@@ -138,6 +138,12 @@ export const createInquiry = asyncHandler(async (req, res) => {
 
   const now = new Date();
   const resolvedPhone = phone || req.user.phoneNumber || "";
+  const resolvedOfferPrice =
+    messageType === "offer" && offerPrice ? Number(offerPrice) : null;
+  const lastSummary =
+    messageType === "offer" && resolvedOfferPrice
+      ? `Offer: PKR ${resolvedOfferPrice.toLocaleString("en-PK")} — ${message}`
+      : message;
 
   // Check if a thread already exists for this car + buyer
   let inquiry = await Inquiry.findOne({
@@ -161,11 +167,12 @@ export const createInquiry = asyncHandler(async (req, res) => {
     inquiry.messages.push({
       sender: currentUserId,
       text: message,
-      messageType: "text",
+      messageType: messageType || "text",
+      offerPrice: resolvedOfferPrice,
       readBy: [currentUserId],
       createdAt: now,
     });
-    inquiry.lastMessage = message;
+    inquiry.lastMessage = lastSummary;
     inquiry.lastMessageAt = now;
     inquiry.lastSender = currentUserId;
     inquiry.unreadBySeller = (inquiry.unreadBySeller || 0) + 1;
@@ -185,12 +192,13 @@ export const createInquiry = asyncHandler(async (req, res) => {
         {
           sender: currentUserId,
           text: message,
-          messageType: "text",
+          messageType: messageType || "text",
+          offerPrice: resolvedOfferPrice,
           readBy: [currentUserId],
           createdAt: now,
         },
       ],
-      lastMessage: message,
+      lastMessage: lastSummary,
       lastMessageAt: now,
       lastSender: currentUserId,
       unreadByBuyer: 0,

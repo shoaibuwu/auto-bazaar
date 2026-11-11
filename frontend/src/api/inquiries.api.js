@@ -38,12 +38,20 @@ export async function getInquiryById(inquiryId) {
  * @param {string} carId
  * @param {object} payload - { message: string, phone?: string, phoneNumber?: string }
  */
-export async function sendCarInquiry(carId, { message, phone = "", phoneNumber = "" }) {
+export async function sendCarInquiry(
+  carId,
+  { message, phone = "", phoneNumber = "", messageType = "text", offerPrice = undefined }
+) {
   const finalPhone = phone || phoneNumber || "";
-  const response = await api.post(`/inquiries/${carId}`, {
+  const body = {
     message,
     phone: finalPhone,
-  });
+    messageType,
+  };
+  if (messageType === "offer" && offerPrice) {
+    body.offerPrice = Number(offerPrice);
+  }
+  const response = await api.post(`/inquiries/${carId}`, body);
   return response?.data?.inquiry || response?.inquiry;
 }
 

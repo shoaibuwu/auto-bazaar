@@ -11,10 +11,12 @@ import { useSocket } from "../context/SocketContext";
 import {
   getMyInquiriesWithMeta,
   getInquiryById,
+  sendCarInquiry,
   sendInquiryReply,
   markInquiryRead,
   deleteInquiry,
 } from "../api/inquiries.api";
+import { getCarById } from "../api/cars.api";
 
 const BACKEND_BASE = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
@@ -100,8 +102,13 @@ export default function InquiriesPage({ onOpenAuth }) {
     return t === "received" || t === "sent" ? t : "all";
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(() => searchParams.get("thread") || null);
-  const [mobileShowChat, setMobileShowChat] = useState(Boolean(searchParams.get("thread")));
+  const [selectedId, setSelectedId] = useState(
+    () => searchParams.get("thread") || null
+  );
+  const [draftThread, setDraftThread] = useState(null);
+  const [mobileShowChat, setMobileShowChat] = useState(
+    Boolean(searchParams.get("thread") || searchParams.get("carId"))
+  );
 
   // Active thread composer state
   const [draftText, setDraftText] = useState("");
@@ -120,11 +127,96 @@ export default function InquiriesPage({ onOpenAuth }) {
   const typingTimeoutRef = useRef(null);
   const isTypingEmittedRef = useRef(false);
   const selectedIdRef = useRef(selectedId);
+  const userRef = useRef(user);
+  const setSearchParamsRef = useRef(setSearchParams);
   const initialThreadParamRef = useRef(searchParams.get("thread"));
+  const initialCarIdParamRef = useRef(searchParams.get("carId"));
+  const handledCarIdRef = useRef(null);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  }, [setSearchParams]);
+
+  const urlCarIdParam = searchParams.get("carId");
+
+  // Helper: Open an existing thread for a car or prepare an unsent draft chat
+  const openCarChatTarget = useCallback(
+    async (targetCarId, currentList) => {
+      if (!targetCarId || !currentUserId) return;
+
+      const existingCarThread = currentList.find(
+        (i) =>
+          String(i.car?._id || i.car) === String(targetCarId) &&
+          String(i.buyer?._id || i.buyer) === currentUserId
+      );
+
+      if (existingCarThread) {
+        setDraftThread(null);
+        setSelectedId(existingCarThread._id);
+        setMobileShowChat(true);
+        setSearchParamsRef.current({ thread: existingCarThread._id }, { replace: true });
+        return;
+      }
+
+      try {
+        const carData = await getCarById(targetCarId);
+        const sId = String(carData?.seller?._id || carData?.seller || "");
+        if (carData && sId && sId !== currentUserId) {
+          const currentUser = userRef.current;
+          const draftObj = {
+            _id: `draft-${carData.id}`,
+            isDraft: true,
+            car: {
+              _id: carData.id,
+              title: carData.title,
+              price: carData.price,
+              images:
+                carData.images?.length > 0
+                  ? carData.images
+                  : carData.image
+                  ? [carData.image]
+                  : [],
+              city: carData.city,
+              year: carData.year,
+            },
+            buyer: {
+              _id: currentUserId,
+              name: currentUser?.name || "You",
+              email: currentUser?.email,
+              phoneNumber: currentUser?.phoneNumber,
+            },
+            seller:
+              typeof carData.seller === "object"
+                ? carData.seller
+                : { _id: sId, name: "Verified Seller" },
+            phone: carData.seller?.phoneNumber || "",
+            messages: [],
+            lastMessage: "Start a live conversation...",
+            lastMessageAt: new Date().toISOString(),
+            unreadByBuyer: 0,
+            unreadBySeller: 0,
+          };
+          setDraftThread(draftObj);
+          setSelectedId(draftObj._id);
+          setMobileShowChat(true);
+          checkUsersOnline([sId]);
+        } else if (currentList.length > 0) {
+          setSelectedId(currentList[0]._id);
+        }
+      } catch {
+        if (currentList.length > 0) setSelectedId(currentList[0]._id);
+      }
+    },
+    [currentUserId, checkUsersOnline]
+  );
 
   // Fetch full conversation list from backend
   const fetchInquiries = useCallback(async () => {
@@ -143,15 +235,21 @@ export default function InquiriesPage({ onOpenAuth }) {
         if (bId && bId !== currentUserId) counterpartIds.push(bId);
         if (sId && sId !== currentUserId) counterpartIds.push(sId);
       });
+
       if (counterpartIds.length > 0) {
         checkUsersOnline([...new Set(counterpartIds)]);
       }
 
-      // Auto-select requested thread or first item if nothing is selected
+      // Auto-select requested thread, car draft, or first item
       const urlThread = initialThreadParamRef.current;
+      const urlCarId = initialCarIdParamRef.current;
+
       if (urlThread && list.some((i) => String(i._id) === String(urlThread))) {
         setSelectedId(urlThread);
         setMobileShowChat(true);
+      } else if (urlCarId) {
+        handledCarIdRef.current = urlCarId;
+        await openCarChatTarget(urlCarId, list);
       } else if (!selectedIdRef.current && list.length > 0) {
         setSelectedId(list[0]._id);
       }
@@ -161,11 +259,23 @@ export default function InquiriesPage({ onOpenAuth }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, currentUserId, checkUsersOnline]);
+  }, [isAuthenticated, currentUserId, checkUsersOnline, openCarChatTarget]);
 
   useEffect(() => {
     fetchInquiries();
   }, [fetchInquiries]);
+
+  // Also react if user navigates to /inquiries?carId=<id> while page is mounted
+  useEffect(() => {
+    if (!urlCarIdParam) {
+      handledCarIdRef.current = null;
+      return;
+    }
+    if (isLoading || !isAuthenticated || !currentUserId) return;
+    if (handledCarIdRef.current === urlCarIdParam) return;
+    handledCarIdRef.current = urlCarIdParam;
+    openCarChatTarget(urlCarIdParam, inquiries);
+  }, [isLoading, isAuthenticated, currentUserId, urlCarIdParam, inquiries, openCarChatTarget]);
 
   // Open a thread: fetch latest + mark read
   const handleSelectThread = useCallback(
@@ -175,8 +285,19 @@ export default function InquiriesPage({ onOpenAuth }) {
       setMobileShowChat(true);
       setSendError("");
 
+      if (String(inquiryId).startsWith("draft-")) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete("thread");
+        if (draftThread?.car?._id) {
+          nextParams.set("carId", draftThread.car._id);
+        }
+        setSearchParams(nextParams, { replace: true });
+        return;
+      }
+
       // Update URL param cleanly without page reload
       const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("carId");
       nextParams.set("thread", inquiryId);
       setSearchParams(nextParams, { replace: true });
 
@@ -194,14 +315,14 @@ export default function InquiriesPage({ onOpenAuth }) {
         console.warn("Could not refresh thread:", err.message);
       }
     },
-    [searchParams, setSearchParams, refreshUnreadCount]
+    [searchParams, setSearchParams, refreshUnreadCount, draftThread]
   );
 
   // If initial selectedId has unread messages for current user, mark it read once
   useEffect(() => {
-    if (!selectedId || !currentUserId) return;
+    if (!selectedId || !currentUserId || String(selectedId).startsWith("draft-")) return;
     const active = inquiries.find((i) => String(i._id) === String(selectedId));
-    if (!active) return;
+    if (!active || active.isDraft) return;
 
     const isSeller = String(active.seller?._id || active.seller) === currentUserId;
     const myUnread = isSeller ? active.unreadBySeller : active.unreadByBuyer;
@@ -227,7 +348,7 @@ export default function InquiriesPage({ onOpenAuth }) {
 
   // Join active Socket.IO thread room & listen to real-time events
   useEffect(() => {
-    if (!socket || !selectedId) return;
+    if (!socket || !selectedId || String(selectedId).startsWith("draft-")) return;
 
     socket.emit("thread:join", selectedId);
 
@@ -368,10 +489,12 @@ export default function InquiriesPage({ onOpenAuth }) {
   }, [socket, currentUserId, refreshUnreadCount]);
 
   // Auto-scroll to latest message whenever active thread or typing state updates
-  const selectedThread = useMemo(
-    () => inquiries.find((i) => String(i._id) === String(selectedId)) || null,
-    [inquiries, selectedId]
-  );
+  const selectedThread = useMemo(() => {
+    if (draftThread && String(draftThread._id) === String(selectedId)) {
+      return draftThread;
+    }
+    return inquiries.find((i) => String(i._id) === String(selectedId)) || null;
+  }, [draftThread, inquiries, selectedId]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -385,7 +508,7 @@ export default function InquiriesPage({ onOpenAuth }) {
   // Emit typing indicators while composing
   const handleDraftChange = (value) => {
     setDraftText(value);
-    if (!socket || !selectedId) return;
+    if (!socket || !selectedId || String(selectedId).startsWith("draft-")) return;
 
     if (value.trim() && !isTypingEmittedRef.current) {
       socket.emit("typing:start", { inquiryId: selectedId });
@@ -401,7 +524,7 @@ export default function InquiriesPage({ onOpenAuth }) {
     }, 1800);
   };
 
-  // Send a reply message (text, viewing, or offer)
+  // Send a message (creates thread if draft, or replies to existing thread)
   const handleSendMessage = async (
     e,
     overridePayload = null
@@ -431,34 +554,73 @@ export default function InquiriesPage({ onOpenAuth }) {
       setSendError("");
 
       // Stop typing indicator right away
-      if (socket && isTypingEmittedRef.current) {
+      if (socket && isTypingEmittedRef.current && !String(selectedId).startsWith("draft-")) {
         socket.emit("typing:stop", { inquiryId: selectedId });
         isTypingEmittedRef.current = false;
       }
 
-      const res = await sendInquiryReply(selectedId, {
-        text: finalText,
-        messageType,
-        offerPrice,
-      });
+      if (selectedThread?.isDraft) {
+        const carIdTarget = selectedThread.car?._id;
+        if (!carIdTarget) {
+          throw new Error("Vehicle reference is missing.");
+        }
 
-      const updatedThread = res?.inquiry;
-      if (updatedThread) {
-        setInquiries((prev) => {
-          const next = prev.map((item) =>
-            String(item._id) === String(selectedId)
-              ? {
-                  ...updatedThread,
-                  messages: dedupeMessages(updatedThread.messages || []),
-                }
-              : item
-          );
-          return [...next].sort(
-            (a, b) =>
-              new Date(b.lastMessageAt || b.createdAt) -
-              new Date(a.lastMessageAt || a.createdAt)
-          );
+        const created = await sendCarInquiry(carIdTarget, {
+          message: finalText,
+          phoneNumber: user?.phoneNumber || "",
+          messageType,
+          offerPrice,
         });
+
+        if (created) {
+          const normalized = {
+            ...created,
+            messages: dedupeMessages(created.messages || []),
+          };
+          setDraftThread(null);
+          setInquiries((prev) => {
+            const exists = prev.some((i) => String(i._id) === String(created._id));
+            const next = exists
+              ? prev.map((i) => (String(i._id) === String(created._id) ? normalized : i))
+              : [normalized, ...prev];
+            return [...next].sort(
+              (a, b) =>
+                new Date(b.lastMessageAt || b.createdAt) -
+                new Date(a.lastMessageAt || a.createdAt)
+            );
+          });
+          setSelectedId(created._id);
+          setMobileShowChat(true);
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.delete("carId");
+          nextParams.set("thread", created._id);
+          setSearchParams(nextParams, { replace: true });
+        }
+      } else {
+        const res = await sendInquiryReply(selectedId, {
+          text: finalText,
+          messageType,
+          offerPrice,
+        });
+
+        const updatedThread = res?.inquiry;
+        if (updatedThread) {
+          setInquiries((prev) => {
+            const next = prev.map((item) =>
+              String(item._id) === String(selectedId)
+                ? {
+                    ...updatedThread,
+                    messages: dedupeMessages(updatedThread.messages || []),
+                  }
+                : item
+            );
+            return [...next].sort(
+              (a, b) =>
+                new Date(b.lastMessageAt || b.createdAt) -
+                new Date(a.lastMessageAt || a.createdAt)
+            );
+          });
+        }
       }
 
       if (!overridePayload) {
@@ -476,6 +638,12 @@ export default function InquiriesPage({ onOpenAuth }) {
   // Delete confirmed inquiry thread
   const handleConfirmDelete = async () => {
     if (!confirmDeleteId) return;
+    if (String(confirmDeleteId).startsWith("draft-")) {
+      setDraftThread(null);
+      setSelectedId(inquiries[0]?._id || null);
+      setConfirmDeleteId(null);
+      return;
+    }
     try {
       setDeletingId(confirmDeleteId);
       const deletedTargetId = confirmDeleteId;
@@ -513,16 +681,29 @@ export default function InquiriesPage({ onOpenAuth }) {
     }
   };
 
+  // Hide draft row once its real MongoDB thread exists in inquiries
+  const activeDraft = useMemo(() => {
+    if (!draftThread) return null;
+    const alreadyCreated = inquiries.some(
+      (inq) =>
+        String(inq.car?._id || inq.car) === String(draftThread.car?._id) &&
+        String(inq.buyer?._id || inq.buyer) === currentUserId
+    );
+    return alreadyCreated ? null : draftThread;
+  }, [draftThread, inquiries, currentUserId]);
+
   // Derived lists & role counters
   const { receivedList, sentList, filteredList } = useMemo(() => {
     const received = inquiries.filter(
       (inq) => String(inq.seller?._id || inq.seller) === currentUserId
     );
-    const sent = inquiries.filter(
+    const sentBase = inquiries.filter(
       (inq) => String(inq.buyer?._id || inq.buyer) === currentUserId
     );
+    const sent = activeDraft ? [activeDraft, ...sentBase] : sentBase;
+    const allCombined = activeDraft ? [activeDraft, ...inquiries] : inquiries;
 
-    let list = inquiries;
+    let list = allCombined;
     if (activeTab === "received") list = received;
     else if (activeTab === "sent") list = sent;
 
@@ -540,7 +721,7 @@ export default function InquiriesPage({ onOpenAuth }) {
     }
 
     return { receivedList: received, sentList: sent, filteredList: list };
-  }, [inquiries, currentUserId, activeTab, searchQuery]);
+  }, [inquiries, activeDraft, currentUserId, activeTab, searchQuery]);
 
   // Helpers
   const getCarImageUrl = (car) => {
@@ -637,7 +818,11 @@ export default function InquiriesPage({ onOpenAuth }) {
         {/* Role Filter Tabs */}
         <div className="inline-flex p-1 rounded-xl bg-surface-container border border-outline-variant/30 self-start md:self-auto">
           {[
-            { id: "all", label: "All Chats", count: inquiries.length },
+            {
+              id: "all",
+              label: "All Chats",
+              count: inquiries.length + (activeDraft ? 1 : 0),
+            },
             { id: "received", label: "Selling", count: receivedList.length },
             { id: "sent", label: "Buying", count: sentList.length },
           ].map((tab) => (
@@ -702,7 +887,7 @@ export default function InquiriesPage({ onOpenAuth }) {
             <div className="h-12 rounded-2xl bg-surface-container" />
           </div>
         </div>
-      ) : inquiries.length === 0 ? (
+      ) : inquiries.length === 0 && !activeDraft ? (
         <div className="py-20 px-4 bg-surface-container-lowest rounded-3xl border border-outline-variant/30 text-center shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-3xl">mark_email_read</span>
@@ -797,9 +982,15 @@ export default function InquiriesPage({ onOpenAuth }) {
                           <span className="font-bold text-xs text-on-surface truncate">
                             {counterpart?.name || "AutoBazaar User"}
                           </span>
-                          <span className="text-[10px] font-mono text-outline shrink-0">
-                            {formatTimeShort(inq.lastMessageAt || inq.createdAt)}
-                          </span>
+                          {inq.isDraft ? (
+                            <span className="px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[9px] font-bold uppercase tracking-wider shrink-0">
+                              New
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-outline shrink-0">
+                              {formatTimeShort(inq.lastMessageAt || inq.createdAt)}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -946,14 +1137,16 @@ export default function InquiriesPage({ onOpenAuth }) {
                         <span className="hidden lg:inline">WhatsApp</span>
                       </a>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(selectedThread._id)}
-                      className="p-1.5 rounded-xl border border-error/30 text-error hover:bg-error/10 transition-colors"
-                      title="Delete conversation"
-                    >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                    </button>
+                    {!selectedThread.isDraft && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(selectedThread._id)}
+                        className="p-1.5 rounded-xl border border-error/30 text-error hover:bg-error/10 transition-colors"
+                        title="Delete conversation"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1010,6 +1203,24 @@ export default function InquiriesPage({ onOpenAuth }) {
                   ref={messagesContainerRef}
                   className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-surface-container-low/20"
                 >
+                  {dedupeMessages(selectedThread.messages || []).length === 0 && !activeTyping && (
+                    <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center px-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                        <span className="material-symbols-outlined text-2xl">forum</span>
+                      </div>
+                      <h3 className="text-sm font-bold text-on-surface">
+                        Start chatting with {activeCounterpart?.name || "the seller"}
+                      </h3>
+                      <p className="text-xs text-on-surface-variant max-w-sm mt-1 leading-relaxed">
+                        Send a message below, tap a quick question, or click{" "}
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          Make Price Offer
+                        </span>{" "}
+                        to start negotiating live.
+                      </p>
+                    </div>
+                  )}
+
                   {dedupeMessages(selectedThread.messages || []).map((msg, idx) => {
                     const senderId = String(msg.sender?._id || msg.sender || "");
                     const isMine = senderId === currentUserId;

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getCarById, sendCarInquiry } from "../api/cars.api";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { getCarById } from "../api/cars.api";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 
 export default function CarDetailsPage({
   favorites = new Set(),
@@ -9,20 +10,14 @@ export default function CarDetailsPage({
   onOpenAuth,
 }) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { onlineMap, checkUsersOnline, unreadCount } = useSocket();
 
   const [car, setCar] = useState(null);
   const [activeImage, setActiveImage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Inquiry form states
-  const [message, setMessage] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [isSendingInquiry, setIsSendingInquiry] = useState(false);
-  const [inquirySuccess, setInquirySuccess] = useState(false);
-  const [createdInquiryId, setCreatedInquiryId] = useState(null);
-  const [inquiryError, setInquiryError] = useState("");
 
   // Fetch single car from API
   const fetchCarDetails = useCallback(async () => {
@@ -32,7 +27,6 @@ export default function CarDetailsPage({
       const data = await getCarById(id);
       setCar(data);
       setActiveImage(data.image);
-      setMessage(`Hi ${data.seller?.name || "Seller"}, I am interested in your ${data.title}. Is it still available for inspection?`);
     } catch (err) {
       setError(err.message || "Failed to load car details");
     } finally {
@@ -45,35 +39,31 @@ export default function CarDetailsPage({
     window.scrollTo(0, 0);
   }, [fetchCarDetails]);
 
-  // Handle inquiry submission
-  const handleInquirySubmit = async (e) => {
-    e.preventDefault();
+  const sellerId = car?.seller?._id || (typeof car?.seller === "string" ? car.seller : null);
+  const isSellerOnline = sellerId ? Boolean(onlineMap[String(sellerId)]) : false;
+  const isFavorite = car ? favorites.has(car.id) : false;
+  const isOwner = Boolean(
+    user && sellerId && String(user._id || user.id) === String(sellerId)
+  );
+
+  useEffect(() => {
+    if (isAuthenticated && sellerId) {
+      checkUsersOnline([String(sellerId)]);
+    }
+  }, [isAuthenticated, sellerId, checkUsersOnline]);
+
+  // Open direct real-time chat with seller
+  const handleStartChat = () => {
     if (!isAuthenticated) {
       if (onOpenAuth) onOpenAuth();
       return;
     }
-
-    if (!message.trim()) {
-      setInquiryError("Please enter a message for the seller.");
+    if (isOwner) {
+      navigate("/inquiries?tab=received");
       return;
     }
-
-    try {
-      setIsSendingInquiry(true);
-      setInquiryError("");
-      const res = await sendCarInquiry(id, { message, phoneNumber });
-      const returnedId = res?.data?.inquiry?._id || res?.inquiry?._id || null;
-      setCreatedInquiryId(returnedId);
-      setInquirySuccess(true);
-    } catch (err) {
-      setInquiryError(err.message || "Failed to send inquiry to seller.");
-    } finally {
-      setIsSendingInquiry(false);
-    }
+    navigate(`/inquiries?carId=${car.id}`);
   };
-
-  const isFavorite = car ? favorites.has(car.id) : false;
-  const isOwner = user && car && car.seller && (user._id === car.seller._id || user._id === car.seller);
 
   // Loading skeleton
   if (isLoading) {
@@ -340,137 +330,76 @@ export default function CarDetailsPage({
 
             {/* Seller Overview */}
             <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary text-on-primary font-bold text-base flex items-center justify-center shrink-0 ring-2 ring-primary/20">
+              <div className="relative w-11 h-11 rounded-full bg-primary text-on-primary font-bold text-base flex items-center justify-center shrink-0 ring-2 ring-primary/20">
                 {car.seller?.name ? car.seller.name.charAt(0).toUpperCase() : "S"}
+                {isSellerOnline && (
+                  <span
+                    title="Seller is online"
+                    className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-surface-container-low"
+                  />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-sm text-on-surface truncate">
                   {car.seller?.name || "Verified Seller"}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-0.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="capitalize">{car.seller?.role || "Seller"}</span>
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      isSellerOnline ? "bg-emerald-500 animate-pulse" : "bg-outline/60"
+                    }`}
+                  />
+                  <span className="capitalize">
+                    {isSellerOnline ? "Online now" : car.seller?.role || "Seller"}
+                  </span>
                   {car.seller?.phoneNumber && (
                     <>
                       <span>•</span>
-                      <span className="truncate">{car.seller.phoneNumber}</span>
+                      <span className="truncate font-mono">{car.seller.phoneNumber}</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Inquiry Form */}
-            <div className="pt-2 border-t border-outline-variant/30">
-              <h3 className="text-sm font-bold text-on-surface mb-2 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-primary text-base">mail</span>
-                Send Inquiry to Seller
-              </h3>
-
-              {isOwner ? (
-                <div className="p-3.5 rounded-xl bg-surface-container text-xs text-on-surface-variant border border-outline-variant/30 space-y-2.5">
-                  <p>ℹ️ This is your listing. Buyers will send inquiries here directly to your account.</p>
-                  <Link
-                    to="/inquiries?tab=received"
-                    className="inline-flex items-center gap-1.5 text-primary font-semibold hover:underline"
-                  >
-                    <span className="material-symbols-outlined text-sm">forum</span>
-                    Open Seller Inbox
-                  </Link>
+            {/* Direct Live Chat CTA (Single inviting button under seller name & phone) */}
+            <button
+              type="button"
+              onClick={handleStartChat}
+              className="group w-full p-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-primary to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0 text-left">
+                <div className="relative w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-xl">forum</span>
+                  {!isOwner && isSellerOnline && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-indigo-600 animate-pulse" />
+                  )}
                 </div>
-              ) : inquirySuccess ? (
-                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-3">
-                  <div className="flex items-center gap-2 font-bold text-sm">
-                    <span className="material-symbols-outlined text-lg">check_circle</span>
-                    Inquiry Sent Successfully!
+                <div className="min-w-0">
+                  <div className="font-bold text-sm tracking-tight flex items-center gap-2">
+                    <span>{isOwner ? "Open Seller Chat Inbox" : "Chat with Seller"}</span>
+                    {!isOwner && isSellerOnline && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-400/20 text-emerald-100 border border-emerald-300/30">
+                        Live
+                      </span>
+                    )}
+                    {isOwner && unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                        {unreadCount} new
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">
-                    Your inquiry has been delivered to {car.seller?.name || "the seller"}. Continue chatting in real time below.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Link
-                      to={createdInquiryId ? `/inquiries?thread=${createdInquiryId}` : "/inquiries"}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-sm hover:opacity-95 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-sm">forum</span>
-                      Open Live Chat
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setInquirySuccess(false)}
-                      className="text-xs font-semibold underline text-primary px-2 py-1"
-                    >
-                      Send another
-                    </button>
+                  <div className="text-[11px] text-white/80 truncate">
+                    {isOwner
+                      ? "Your listing • Reply to interested buyers live"
+                      : "Negotiate price or schedule an inspection live"}
                   </div>
                 </div>
-              ) : (
-                <form onSubmit={handleInquirySubmit} className="space-y-3">
-                  {inquiryError && (
-                    <div className="p-2.5 rounded-lg bg-error/10 border border-error/20 text-error text-xs flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-sm shrink-0">error</span>
-                      <span>{inquiryError}</span>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                      Message
-                    </label>
-                    <textarea
-                      rows={3}
-                      required
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Ask about car condition, price, or schedule a test drive..."
-                      className="w-full p-3 rounded-xl border border-outline-variant/50 bg-surface-container-low text-on-surface text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                      Your Phone Number (Optional)
-                    </label>
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="+92 300 1234567"
-                      className="w-full px-3 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-on-surface text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-                    />
-                  </div>
-
-                  {isAuthenticated ? (
-                    <button
-                      type="submit"
-                      disabled={isSendingInquiry}
-                      className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-xs shadow-md hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isSendingInquiry ? (
-                        <>
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Sending message...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-base">send</span>
-                          <span>Send Message to Seller</span>
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onOpenAuth}
-                      className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-xs shadow-md hover:opacity-95 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base">lock</span>
-                      <span>Sign In to Contact Seller</span>
-                    </button>
-                  )}
-                </form>
-              )}
-            </div>
+              </div>
+              <span className="material-symbols-outlined text-lg shrink-0 group-hover:translate-x-1 transition-transform">
+                arrow_forward
+              </span>
+            </button>
 
           </div>
 
