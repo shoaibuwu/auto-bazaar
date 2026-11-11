@@ -19,6 +19,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --color-bg: 11 15 25; /* #0b0f19 - Midnight Dark Theme */
     --color-surface: 11 15 25;
     --color-surface-container: 21 29 48; /* #151d30 */
@@ -58,6 +59,17 @@
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* Hide browser default number spinners (use custom themed controls where needed) */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Tabular numerals for monetary & spec clarity */

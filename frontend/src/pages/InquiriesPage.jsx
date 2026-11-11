@@ -182,8 +182,8 @@ export default function InquiriesPage({ onOpenAuth }) {
                 carData.images?.length > 0
                   ? carData.images
                   : carData.image
-                  ? [carData.image]
-                  : [],
+                    ? [carData.image]
+                    : [],
               city: carData.city,
               year: carData.year,
             },
@@ -281,6 +281,10 @@ export default function InquiriesPage({ onOpenAuth }) {
   const handleSelectThread = useCallback(
     async (inquiryId) => {
       if (!inquiryId) return;
+      if (String(inquiryId) !== String(selectedIdRef.current)) {
+        setShowOfferBar(false);
+        setOfferPriceInput("");
+      }
       setSelectedId(inquiryId);
       setMobileShowChat(true);
       setSendError("");
@@ -342,7 +346,7 @@ export default function InquiriesPage({ onOpenAuth }) {
           );
           refreshUnreadCount();
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [selectedId, currentUserId, inquiries, refreshUnreadCount]);
 
@@ -407,7 +411,7 @@ export default function InquiriesPage({ onOpenAuth }) {
         String(selectedIdRef.current) === String(inquiryId) &&
         senderId !== currentUserId
       ) {
-        markInquiryRead(inquiryId).then(() => refreshUnreadCount()).catch(() => {});
+        markInquiryRead(inquiryId).then(() => refreshUnreadCount()).catch(() => { });
       }
     };
 
@@ -524,6 +528,14 @@ export default function InquiriesPage({ onOpenAuth }) {
     }, 1800);
   };
 
+  // Step offer price up or down from 0 in clean PKR 5,000 increments
+  const handleAdjustOffer = (delta) => {
+    const currentVal = Number(offerPriceInput || 0);
+    const safeCurrent = Number.isNaN(currentVal) ? 0 : currentVal;
+    const next = Math.max(0, safeCurrent + delta);
+    setOfferPriceInput(String(next));
+  };
+
   // Send a message (creates thread if draft, or replies to existing thread)
   const handleSendMessage = async (
     e,
@@ -533,11 +545,13 @@ export default function InquiriesPage({ onOpenAuth }) {
     if (!selectedId || isSending) return;
 
     const textToSend = overridePayload?.text ?? draftText.trim();
+    const parsedOffer = Number(offerPriceInput);
+    const hasValidOffer =
+      showOfferBar && Number.isFinite(parsedOffer) && parsedOffer > 0;
     const messageType =
-      overridePayload?.messageType ?? (showOfferBar && offerPriceInput ? "offer" : "text");
+      overridePayload?.messageType ?? (hasValidOffer ? "offer" : "text");
     const offerPrice =
-      overridePayload?.offerPrice ??
-      (showOfferBar && offerPriceInput ? Number(offerPriceInput) : undefined);
+      overridePayload?.offerPrice ?? (hasValidOffer ? parsedOffer : undefined);
 
     if (!textToSend && messageType !== "offer") return;
 
@@ -609,9 +623,9 @@ export default function InquiriesPage({ onOpenAuth }) {
             const next = prev.map((item) =>
               String(item._id) === String(selectedId)
                 ? {
-                    ...updatedThread,
-                    messages: dedupeMessages(updatedThread.messages || []),
-                  }
+                  ...updatedThread,
+                  messages: dedupeMessages(updatedThread.messages || []),
+                }
                 : item
             );
             return [...next].sort(
@@ -796,16 +810,14 @@ export default function InquiriesPage({ onOpenAuth }) {
               Messages & Live Chat
             </h1>
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                isConnected
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
-              }`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${isConnected
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                }`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                }`}
+                className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                  }`}
               />
               {isConnected ? "Live Connected" : "Connecting..."}
             </span>
@@ -830,11 +842,10 @@ export default function InquiriesPage({ onOpenAuth }) {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab.id
-                  ? "bg-surface-container-lowest text-on-surface shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === tab.id
+                ? "bg-surface-container-lowest text-on-surface shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
+                }`}
             >
               <span>{tab.label}</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
@@ -848,11 +859,10 @@ export default function InquiriesPage({ onOpenAuth }) {
       {/* Notices */}
       {actionNotice && (
         <div
-          className={`mb-4 p-3.5 rounded-xl flex items-center justify-between text-xs font-medium border ${
-            actionNotice.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-              : "bg-error/10 border-error/30 text-error"
-          }`}
+          className={`mb-4 p-3.5 rounded-xl flex items-center justify-between text-xs font-medium border ${actionNotice.type === "success"
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+            : "bg-error/10 border-error/30 text-error"
+            }`}
         >
           <span>{actionNotice.message}</span>
           <button type="button" onClick={() => setActionNotice(null)}>
@@ -910,9 +920,8 @@ export default function InquiriesPage({ onOpenAuth }) {
         <div className="h-[calc(100vh-225px)] min-h-[480px] max-h-[680px] rounded-3xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12">
           {/* LEFT PANE: Conversations Sidebar */}
           <aside
-            className={`md:col-span-5 lg:col-span-4 border-r border-outline-variant/30 flex flex-col bg-surface-container-low/40 overflow-hidden ${
-              mobileShowChat ? "hidden md:flex" : "flex"
-            }`}
+            className={`md:col-span-5 lg:col-span-4 border-r border-outline-variant/30 flex flex-col bg-surface-container-low/40 overflow-hidden ${mobileShowChat ? "hidden md:flex" : "flex"
+              }`}
           >
             {/* Search Box */}
             <div className="p-3.5 border-b border-outline-variant/30">
@@ -951,11 +960,10 @@ export default function InquiriesPage({ onOpenAuth }) {
                       key={inq._id}
                       type="button"
                       onClick={() => handleSelectThread(inq._id)}
-                      className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors ${
-                        isSelected
-                          ? "bg-primary/10 border-l-4 border-l-primary"
-                          : "hover:bg-surface-container/60 border-l-4 border-l-transparent"
-                      }`}
+                      className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors ${isSelected
+                        ? "bg-primary/10 border-l-4 border-l-primary"
+                        : "hover:bg-surface-container/60 border-l-4 border-l-transparent"
+                        }`}
                     >
                       {/* Thumbnail with Online Dot */}
                       <div className="relative shrink-0">
@@ -995,11 +1003,10 @@ export default function InquiriesPage({ onOpenAuth }) {
 
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span
-                            className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
-                              isSeller
-                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400"
-                            }`}
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${isSeller
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400"
+                              }`}
                           >
                             {isSeller ? "Buyer" : "Seller"}
                           </span>
@@ -1010,13 +1017,12 @@ export default function InquiriesPage({ onOpenAuth }) {
 
                         <div className="flex items-center justify-between gap-2 mt-1">
                           <p
-                            className={`text-xs truncate ${
-                              isTyping
-                                ? "text-emerald-600 dark:text-emerald-400 font-semibold italic"
-                                : unread > 0
+                            className={`text-xs truncate ${isTyping
+                              ? "text-emerald-600 dark:text-emerald-400 font-semibold italic"
+                              : unread > 0
                                 ? "text-on-surface font-semibold"
                                 : "text-on-surface-variant"
-                            }`}
+                              }`}
                           >
                             {isTyping
                               ? "typing..."
@@ -1039,9 +1045,8 @@ export default function InquiriesPage({ onOpenAuth }) {
 
           {/* RIGHT PANE: Active Conversation Thread */}
           <section
-            className={`md:col-span-7 lg:col-span-8 flex flex-col bg-surface-container-lowest overflow-hidden ${
-              mobileShowChat ? "flex" : "hidden md:flex"
-            }`}
+            className={`md:col-span-7 lg:col-span-8 flex flex-col bg-surface-container-lowest overflow-hidden ${mobileShowChat ? "flex" : "hidden md:flex"
+              }`}
           >
             {!selectedThread ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-on-surface-variant">
@@ -1236,20 +1241,18 @@ export default function InquiriesPage({ onOpenAuth }) {
                         className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[82%] sm:max-w-[70%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                            isMine
-                              ? "bg-primary text-on-primary rounded-br-sm"
-                              : "bg-surface-container-lowest text-on-surface border border-outline-variant/40 rounded-bl-sm"
-                          }`}
+                          className={`max-w-[82%] sm:max-w-[70%] rounded-2xl px-3.5 py-2.5 shadow-sm ${isMine
+                            ? "bg-primary text-on-primary rounded-br-sm"
+                            : "bg-surface-container-lowest text-on-surface border border-outline-variant/40 rounded-bl-sm"
+                            }`}
                         >
                           {/* Structured Offer Badge */}
                           {msg.messageType === "offer" && msg.offerPrice && (
                             <div
-                              className={`mb-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-                                isMine
-                                  ? "bg-white/15 text-white"
-                                  : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                              }`}
+                              className={`mb-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${isMine
+                                ? "bg-white/15 text-white"
+                                : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                }`}
                             >
                               <span className="material-symbols-outlined text-sm">
                                 sell
@@ -1263,11 +1266,10 @@ export default function InquiriesPage({ onOpenAuth }) {
                           {/* Structured Viewing Badge */}
                           {msg.messageType === "viewing" && (
                             <div
-                              className={`mb-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${
-                                isMine
-                                  ? "bg-white/15 text-white"
-                                  : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300"
-                              }`}
+                              className={`mb-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${isMine
+                                ? "bg-white/15 text-white"
+                                : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300"
+                                }`}
                             >
                               <span className="material-symbols-outlined text-xs">
                                 event_available
@@ -1281,16 +1283,14 @@ export default function InquiriesPage({ onOpenAuth }) {
                           </p>
 
                           <div
-                            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
-                              isMine ? "text-white/75" : "text-outline"
-                            }`}
+                            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isMine ? "text-white/75" : "text-outline"
+                              }`}
                           >
                             <span>{formatMessageTime(msg.createdAt)}</span>
                             {isMine && (
                               <span
-                                className={`material-symbols-outlined text-[13px] ${
-                                  isReadByOther ? "text-emerald-300" : "text-white/60"
-                                }`}
+                                className={`material-symbols-outlined text-[13px] ${isReadByOther ? "text-emerald-300" : "text-white/60"
+                                  }`}
                                 title={isReadByOther ? "Read" : "Sent"}
                               >
                                 {isReadByOther ? "done_all" : "done"}
@@ -1354,12 +1354,23 @@ export default function InquiriesPage({ onOpenAuth }) {
                     ))}
                     <button
                       type="button"
-                      onClick={() => setShowOfferBar((v) => !v)}
-                      className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition-colors ${
-                        showOfferBar
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                      }`}
+                      onClick={() =>
+                        setShowOfferBar((prev) => {
+                          const next = !prev;
+                          if (next) {
+                            setOfferPriceInput((curr) =>
+                              curr && Number(curr) > 0 ? curr : "0"
+                            );
+                          } else {
+                            setOfferPriceInput("");
+                          }
+                          return next;
+                        })
+                      }
+                      className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1 transition-colors ${showOfferBar
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                        }`}
                     >
                       <span className="material-symbols-outlined text-xs">sell</span>
                       <span>Make Price Offer</span>
@@ -1368,29 +1379,82 @@ export default function InquiriesPage({ onOpenAuth }) {
 
                   {/* Optional PKR Offer Bar */}
                   {showOfferBar && (
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 pl-1">
-                        PKR
-                      </span>
-                      <input
-                        type="number"
-                        min="10000"
-                        step="5000"
-                        value={offerPriceInput}
-                        onChange={(e) => setOfferPriceInput(e.target.value)}
-                        placeholder="Enter offer amount (e.g. 2400000)"
-                        className="flex-1 bg-transparent text-xs font-mono font-bold text-on-surface focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowOfferBar(false);
-                          setOfferPriceInput("");
-                        }}
-                        className="text-on-surface-variant hover:text-on-surface"
-                      >
-                        <span className="material-symbols-outlined text-base">close</span>
-                      </button>
+                    <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                          PKR
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={offerPriceInput}
+                          onFocus={(e) => {
+                            if (offerPriceInput === "0") e.target.select();
+                          }}
+                          onChange={(e) => {
+                            const cleaned = e.target.value
+                              .replace(/[^0-9]/g, "")
+                              .replace(/^0+(?=\d)/, "");
+                            setOfferPriceInput(cleaned);
+                          }}
+                          onBlur={() => {
+                            if (!offerPriceInput) setOfferPriceInput("0");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              handleAdjustOffer(5000);
+                            } else if (e.key === "ArrowDown") {
+                              e.preventDefault();
+                              handleAdjustOffer(-5000);
+                            }
+                          }}
+                          placeholder="0"
+                          className="no-spinner w-full min-w-0 bg-transparent text-xs sm:text-sm font-mono font-bold text-on-surface placeholder:text-on-surface-variant/60 placeholder:font-sans placeholder:font-normal focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Custom Themed -5k / +5k Controls */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={Number(offerPriceInput || 0) <= 0}
+                          onClick={() => handleAdjustOffer(-5000)}
+                          title="Decrease offer by PKR 5,000"
+                          aria-label="Decrease offer by PKR 5,000"
+                          className="h-7 px-2 rounded-lg bg-surface-container-lowest/90 dark:bg-surface-container hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-0.5 transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            remove
+                          </span>
+                          <span className="hidden sm:inline">5k</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustOffer(5000)}
+                          title="Increase offer by PKR 5,000"
+                          aria-label="Increase offer by PKR 5,000"
+                          className="h-7 px-2 rounded-lg bg-surface-container-lowest/90 dark:bg-surface-container hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-0.5 transition-colors active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            add
+                          </span>
+                          <span className="hidden sm:inline">5k</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowOfferBar(false);
+                            setOfferPriceInput("");
+                          }}
+                          title="Close offer bar"
+                          aria-label="Close offer bar"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors ml-0.5"
+                        >
+                          <span className="material-symbols-outlined text-base">close</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
