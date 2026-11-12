@@ -37,7 +37,9 @@ export const formatCar = (car) => {
     price: car.price,
     priceFormatted: `PKR ${car.price?.toLocaleString("en-PK")}`,
     year: car.year,
+    mileageValue: typeof car.mileage === "number" ? car.mileage : 0,
     mileage: `${car.mileage?.toLocaleString("en-PK")} km`,
+    fuelType: car.fuelType ? car.fuelType.toLowerCase() : "petrol",
     fuel: car.fuelType ? (car.fuelType.charAt(0).toUpperCase() + car.fuelType.slice(1)) : "Petrol",
     city: car.city ? (car.city.charAt(0).toUpperCase() + car.city.slice(1)) : "Pakistan",
     bodyType: car.bodyType || "sedan",
@@ -51,6 +53,7 @@ export const formatCar = (car) => {
     isVerified,
     image: imgUrl,
     images: (car.images || []).map((img) => (img.startsWith("http") ? img : `${BACKEND_BASE}${img}`)),
+    rawImages: car.images || [],
     description: car.description || "",
     seller: car.seller || null,
     status: car.status || "published",
@@ -142,6 +145,21 @@ export const createCar = async (formData) => {
     return formatCar(response.data.car);
   }
   throw new Error(response.message || "Failed to create vehicle listing");
+};
+
+/**
+ * Update an existing car listing belonging to the seller (Sends multipart/form-data)
+ */
+export const updateCar = async (carId, formData) => {
+  const response = await api.patch(`/cars/${carId}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  if (response.success && response.data?.car) {
+    return formatCar(response.data.car);
+  }
+  throw new Error(response.message || "Failed to update vehicle listing");
 };
 
 /**

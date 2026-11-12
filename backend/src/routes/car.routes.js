@@ -24,9 +24,11 @@ import {
 const router = Router();
 
 // ==========================================
-// PUBLIC ROUTES (No login required for shoppers)
+// PUBLIC & PROTECTED ROUTES ORDERING
 // ==========================================
+// Note: Static routes like /my-listings must be registered before /:id
 router.get("/", validate(searchCarsQuerySchema, "query"), getPublicCars);
+router.get("/my-listings", authenticate, getMyListings);
 router.get("/:id", getCarById);
 
 // ==========================================
@@ -42,8 +44,6 @@ router.post(
   validate(createCarSchema),
   createCar
 );
-
-router.get("/my-listings", getMyListings);
 
 router.patch(
   "/:id",
