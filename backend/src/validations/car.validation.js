@@ -71,7 +71,24 @@ const normalizeCarInput = (data) => {
 };
 
 export const createCarSchema = z.preprocess(normalizeCarInput, baseCarSchema);
-export const updateCarSchema = z.preprocess(normalizeCarInput, baseCarSchema.partial());
+export const updateCarSchema = z.preprocess(
+  normalizeCarInput,
+  baseCarSchema.partial().extend({
+    existingImages: z.preprocess((val) => {
+      if (val === undefined) return undefined;
+      if (Array.isArray(val)) return val.map(String);
+      if (typeof val === "string") {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed.map(String) : [];
+        } catch {
+          return val ? [val] : [];
+        }
+      }
+      return [];
+    }, z.array(z.string()).max(5, "Maximum 5 images allowed per listing").optional()),
+  })
+);
 
 export const searchCarsQuerySchema = z.object({
   search: z.string().trim().optional(),

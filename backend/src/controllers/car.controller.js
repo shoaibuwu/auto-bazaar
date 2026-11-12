@@ -1,7 +1,14 @@
+import mongoose from "mongoose";
 import Car from "../models/car.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+
+const assertValidCarId = (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid vehicle listing ID");
+  }
+};
 
 /**
  * @desc    Get all published cars (Public search, filters, sorting, and pagination)
@@ -166,6 +173,8 @@ export const getMyListings = asyncHandler(async (req, res) => {
  * @access  Public / Private
  */
 export const getCarById = asyncHandler(async (req, res) => {
+  assertValidCarId(req.params.id);
+
   const car = await Car.findById(req.params.id).populate(
     "seller",
     "name email phoneNumber avatar"
@@ -186,6 +195,8 @@ export const getCarById = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const updateCar = asyncHandler(async (req, res) => {
+  assertValidCarId(req.params.id);
+
   const car = await Car.findById(req.params.id);
 
   if (!car) {
@@ -202,14 +213,43 @@ export const updateCar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Sold cars cannot be modified");
   }
 
-  // If new images were uploaded, append them
-  if (req.files && req.files.length > 0) {
-    const newImages = req.files.map((file) => `/uploads/cars/${file.filename}`);
+  const { existingImages, ...updateFields } = req.body;
+  const newImages =
+    req.files && req.files.length > 0
+      ? req.files.map((file) => `/uploads/cars/${file.filename}`)
+      : [];
+
+  if (existingImages !== undefined) {
+    const ownedImagesSet = new Set(car.images || []);
+    const keptImages = existingImages
+      .map((img) => {
+        if (ownedImagesSet.has(img)) return img;
+        try {
+          const parsed = new URL(img);
+          return parsed.pathname;
+        } catch {
+          return img;
+        }
+      })
+      .filter((img) => ownedImagesSet.has(img));
+
+    const combined = Array.from(new Set([...keptImages, ...newImages]));
+    if (combined.length === 0) {
+      throw new ApiError(400, "Please keep or upload at least one vehicle photo");
+    }
+    if (combined.length > 5) {
+      throw new ApiError(400, "You can have a maximum of 5 photos per vehicle");
+    }
+    car.images = combined;
+  } else if (newImages.length > 0) {
+    if ((car.images?.length || 0) + newImages.length > 5) {
+      throw new ApiError(400, "You can have a maximum of 5 photos per vehicle");
+    }
     car.images.push(...newImages);
   }
 
-  // Update provided fields
-  Object.assign(car, req.body);
+  // Update provided validated fields
+  Object.assign(car, updateFields);
 
   // If car was previously rejected, updating it moves it back to draft
   if (car.status === "rejected") {
@@ -230,6 +270,8 @@ export const updateCar = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const submitForReview = asyncHandler(async (req, res) => {
+  assertValidCarId(req.params.id);
+
   const car = await Car.findById(req.params.id);
 
   if (!car) {
@@ -276,6 +318,8 @@ export const submitForReview = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const markAsSold = asyncHandler(async (req, res) => {
+  assertValidCarId(req.params.id);
+
   const car = await Car.findById(req.params.id);
 
   if (!car) {
@@ -309,6 +353,8 @@ export const markAsSold = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const deleteCar = asyncHandler(async (req, res) => {
+  assertValidCarId(req.params.id);
+
   const car = await Car.findById(req.params.id);
 
   if (!car) {

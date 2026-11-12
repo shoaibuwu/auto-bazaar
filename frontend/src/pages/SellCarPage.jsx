@@ -1,15 +1,33 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import {
   createCar,
+  updateCar,
   getMyListings,
   submitCarForReview,
   markCarAsSold,
   deleteCar,
 } from "../api/cars.api";
 import { cities } from "../data/filters";
+
+const POPULAR_MAKES = [
+  "Toyota",
+  "Honda",
+  "Suzuki",
+  "Kia",
+  "Hyundai",
+  "MG",
+  "Changan",
+  "Haval",
+  "Nissan",
+  "Proton",
+  "Daihatsu",
+  "BMW",
+  "Mercedes-Benz",
+  "Audi",
+];
 
 export default function SellCarPage({ onOpenAuth }) {
   const { user, isAuthenticated, isSeller, isAdmin } = useAuth();
@@ -29,6 +47,10 @@ export default function SellCarPage({ onOpenAuth }) {
     }
   }, [searchParams]);
 
+  // Edit mode state (null = creating new listing, object = editing existing listing)
+  const [editingCar, setEditingCar] = useState(null);
+  const [existingImages, setExistingImages] = useState([]); // [{ raw, url }]
+
   // Form State
   const [make, setMake] = useState("Toyota");
   const [model, setModel] = useState("");
@@ -44,6 +66,8 @@ export default function SellCarPage({ onOpenAuth }) {
   // Photos State
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const previewUrlsRef = useRef([]);
+  previewUrlsRef.current = previewUrls;
 
   // UI status states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,28 +77,34 @@ export default function SellCarPage({ onOpenAuth }) {
   // Seller's existing listings state
   const [myListings, setMyListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(false);
+  const [listingsError, setListingsError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  // Clean up object URLs on unmount to avoid memory leaks
+  // Clean up object URLs only on component unmount
   useEffect(() => {
     return () => {
-      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [previewUrls]);
+  }, []);
 
   // Fetch seller's listings
   const fetchSellerListings = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || (!isSeller && !isAdmin)) return;
     try {
       setIsLoadingListings(true);
+      setListingsError("");
       const listings = await getMyListings();
       setMyListings(listings);
     } catch (err) {
-      console.warn("Could not fetch seller listings:", err.message);
+      setListingsError(err.message || "Could not load your vehicle listings.");
     } finally {
       setIsLoadingListings(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isSeller, isAdmin]);
+
+  useEffect(() => {
+    fetchSellerListings();
+  }, [fetchSellerListings]);
 
   useEffect(() => {
     if (activeTab === "listings") {
@@ -82,42 +112,106 @@ export default function SellCarPage({ onOpenAuth }) {
     }
   }, [activeTab, fetchSellerListings]);
 
+  const clearNewPhotos = () => {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+  };
+
+  const resetForm = () => {
+    setEditingCar(null);
+    setExistingImages([]);
+    setMake("Toyota");
+    setModel("");
+    setYear(2022);
+    setPrice("");
+    setMileage("");
+    setCity("Lahore");
+    setBodyType("sedan");
+    setFuelType("petrol");
+    setTransmission("automatic");
+    setDescription("");
+    clearNewPhotos();
+    setFormError("");
+  };
+
+  // Pre-fill form to edit an existing listing
+  const handleStartEdit = (car) => {
+    clearNewPhotos();
+    setFormError("");
+    setSubmitSuccess(null);
+    setEditingCar(car);
+
+    const matchedCity = cities.find(
+      (c) => c.value !== "all" && c.label.toLowerCase() === (car.city || "").toLowerCase()
+    );
+
+    setMake(car.make || "Toyota");
+    setModel(car.model || "");
+    setYear(car.year || 2022);
+    setPrice(car.price != null ? String(car.price) : "");
+    setMileage(car.mileageValue != null ? String(car.mileageValue) : "0");
+    setCity(matchedCity ? matchedCity.label : car.city || "Lahore");
+    setBodyType((car.bodyType || "sedan").toLowerCase());
+    setFuelType((car.fuelType || "petrol").toLowerCase());
+    setTransmission((car.transmission || "automatic").toLowerCase());
+    setDescription(car.description || "");
+
+    const rawList = car.rawImages && car.rawImages.length > 0 ? car.rawImages : [];
+    const hydratedImages = rawList.map((raw, idx) => ({
+      raw,
+      url: car.images?.[idx] || raw,
+    }));
+    setExistingImages(hydratedImages);
+
+    setActiveTab("create");
+    setSearchParams({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelEdit = () => {
+    resetForm();
+    setActiveTab("listings");
+    setSearchParams({ tab: "listings" });
+  };
+
   // Handle Photo selection with client-side preview URLs
   const handlePhotoSelect = (e) => {
     const rawFiles = Array.from(e.target.files);
-    // Filter only valid image files
     const files = rawFiles.filter((file) => file.type.startsWith("image/"));
     if (!files.length) return;
 
-    if (selectedFiles.length + files.length > 5) {
+    const totalCurrent = existingImages.length + selectedFiles.length;
+    if (totalCurrent + files.length > 5) {
       setFormError("You can upload a maximum of 5 photos per vehicle.");
+      e.target.value = "";
       return;
     }
 
     setFormError("");
     setSelectedFiles((prev) => [...prev, ...files]);
 
-    // Create instant previews
     const newPreviews = files.map((file) => URL.createObjectURL(file));
     setPreviewUrls((prev) => [...prev, ...newPreviews]);
-
-    // Reset input so user can add more photos if desired
     e.target.value = "";
   };
 
-  // Remove photo from selection
+  const handleRemoveExistingPhoto = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Remove newly selected photo from selection
   const handleRemovePhoto = (index) => {
     URL.revokeObjectURL(previewUrls[index]);
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Handle Form Submission
+  // Handle Form Submission (Create or Update)
   const handleSubmit = async (shouldAutoSubmit = true) => {
     setFormError("");
     setSubmitSuccess(null);
 
-    // Basic client validations
     if (!make.trim() || !model.trim()) {
       setFormError("Please provide both make and model.");
       return;
@@ -130,15 +224,14 @@ export default function SellCarPage({ onOpenAuth }) {
       setFormError("Please provide valid mileage.");
       return;
     }
-    if (selectedFiles.length === 0) {
-      setFormError("Please select at least 1 photo of your car.");
+    if (existingImages.length + selectedFiles.length === 0) {
+      setFormError("Please keep or select at least 1 photo of your car.");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      // Construct multipart FormData
       const formData = new FormData();
       const title = `${year} ${make.trim()} ${model.trim()}`.trim();
       formData.append("title", title);
@@ -153,57 +246,85 @@ export default function SellCarPage({ onOpenAuth }) {
       formData.append("transmission", transmission);
       formData.append("description", description.trim());
 
-      // Append binary files
+      if (editingCar) {
+        formData.append(
+          "existingImages",
+          JSON.stringify(existingImages.map((img) => img.raw))
+        );
+      }
+
       selectedFiles.forEach((file) => {
         formData.append("images", file);
       });
 
-      // 1. Create car
-      const newCar = await createCar(formData);
+      if (editingCar) {
+        const updatedCar = await updateCar(editingCar.id, formData);
+        const canSubmit =
+          shouldAutoSubmit &&
+          (editingCar.status === "draft" || editingCar.status === "rejected");
 
-      // 2. If user clicked "Save & Submit for Review", immediately submit it
-      if (shouldAutoSubmit && newCar.id) {
-        await submitCarForReview(newCar.id);
-        setSubmitSuccess({
-          title: "Listing Submitted for Review! 🎉",
-          message:
-            "Your car has been uploaded and sent to admin moderation. Once approved, it will go live on the homepage.",
-        });
+        if (canSubmit && updatedCar.id) {
+          await submitCarForReview(updatedCar.id);
+          setSubmitSuccess({
+            title: "Listing Updated & Submitted! 🎉",
+            message:
+              "Your updated details have been saved and sent to admin moderation for review.",
+          });
+        } else if (editingCar.status === "published") {
+          setSubmitSuccess({
+            title: "Live Listing Updated!",
+            message: "Your changes are now live on AutoBazaar.",
+          });
+        } else {
+          setSubmitSuccess({
+            title: "Draft Updated! 📝",
+            message:
+              "Your listing edits were saved. You can submit it for review whenever you are ready.",
+          });
+        }
       } else {
-        setSubmitSuccess({
-          title: "Draft Saved! 📝",
-          message:
-            "Your car listing has been saved as a draft. You can submit it for review whenever you are ready.",
-        });
+        const newCar = await createCar(formData);
+        if (shouldAutoSubmit && newCar.id) {
+          await submitCarForReview(newCar.id);
+          setSubmitSuccess({
+            title: "Listing Submitted for Review! 🎉",
+            message:
+              "Your car has been uploaded and sent to admin moderation. Once approved, it will go live on the homepage.",
+          });
+        } else {
+          setSubmitSuccess({
+            title: "Draft Saved! 📝",
+            message:
+              "Your car listing has been saved as a draft. You can submit it for review whenever you are ready.",
+          });
+        }
       }
 
-      // Reset form
-      setModel("");
-      setPrice("");
-      setMileage("");
-      setDescription("");
-      setSelectedFiles([]);
-      setPreviewUrls([]);
+      resetForm();
+      await fetchSellerListings();
     } catch (err) {
       if (err.errors && err.errors.length > 0) {
-        const errorDetails = err.errors.map((e) => e.message || `${e.field}: invalid`).join(". ");
+        const errorDetails = err.errors
+          .map((e) => e.message || `${e.field}: invalid`)
+          .join(". ");
         setFormError(errorDetails);
       } else {
-        setFormError(err.message || "Failed to create vehicle listing");
+        setFormError(err.message || "Failed to save vehicle listing");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Action: Submit existing draft for review
+  // Action: Submit existing draft or rejected listing for review
   const handleSubmitExisting = async (carId) => {
     try {
       setActionLoadingId(carId);
+      setListingsError("");
       await submitCarForReview(carId);
       await fetchSellerListings();
     } catch (err) {
-      alert(err.message || "Could not submit for review");
+      setListingsError(err.message || "Could not submit for review");
     } finally {
       setActionLoadingId(null);
     }
@@ -214,10 +335,11 @@ export default function SellCarPage({ onOpenAuth }) {
     if (!window.confirm("Are you sure you want to mark this car as sold?")) return;
     try {
       setActionLoadingId(carId);
+      setListingsError("");
       await markCarAsSold(carId);
       await fetchSellerListings();
     } catch (err) {
-      alert(err.message || "Could not mark as sold");
+      setListingsError(err.message || "Could not mark as sold");
     } finally {
       setActionLoadingId(null);
     }
@@ -228,10 +350,14 @@ export default function SellCarPage({ onOpenAuth }) {
     if (!window.confirm("Are you sure you want to delete this listing?")) return;
     try {
       setActionLoadingId(carId);
+      setListingsError("");
       await deleteCar(carId);
+      if (editingCar?.id === carId) {
+        resetForm();
+      }
       await fetchSellerListings();
     } catch (err) {
-      alert(err.message || "Could not delete listing");
+      setListingsError(err.message || "Could not delete listing");
     } finally {
       setActionLoadingId(null);
     }
@@ -314,8 +440,10 @@ export default function SellCarPage({ onOpenAuth }) {
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <span className="material-symbols-outlined text-base">add_circle</span>
-            List a Vehicle
+            <span className="material-symbols-outlined text-base">
+              {editingCar ? "edit_note" : "add_circle"}
+            </span>
+            {editingCar ? "Edit Listing" : "List a Vehicle"}
           </button>
           <button
             type="button"
@@ -347,10 +475,37 @@ export default function SellCarPage({ onOpenAuth }) {
         </div>
       </div>
 
-      {/* TAB 1: LIST A VEHICLE FORM */}
+      {/* TAB 1: LIST / EDIT A VEHICLE FORM */}
       {activeTab === "create" && (
         <div className="space-y-6">
-          
+
+          {/* Edit Mode Banner */}
+          {editingCar && (
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-base">edit</span>
+                  Editing Existing Listing ({editingCar.status.replace(/_/g, " ")})
+                </div>
+                <p className="text-sm font-semibold text-on-surface">
+                  {editingCar.title}
+                </p>
+                {editingCar.status === "rejected" && editingCar.rejectionReason && (
+                  <p className="text-xs text-rose-600 dark:text-rose-300 font-medium">
+                    Rejection note: {editingCar.rejectionReason}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="px-4 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-xs font-semibold text-on-surface hover:bg-surface-container transition-colors self-start sm:self-center shrink-0"
+              >
+                Cancel Edit
+              </button>
+            </div>
+          )}
+
           {/* Success Banner */}
           {submitSuccess && (
             <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 space-y-2 animate-in fade-in">
@@ -412,15 +567,14 @@ export default function SellCarPage({ onOpenAuth }) {
                     onChange={(e) => setMake(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/50 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
                   >
-                    <option value="Toyota">Toyota</option>
-                    <option value="Honda">Honda</option>
-                    <option value="Suzuki">Suzuki</option>
-                    <option value="Kia">Kia</option>
-                    <option value="Hyundai">Hyundai</option>
-                    <option value="MG">MG</option>
-                    <option value="Changan">Changan</option>
-                    <option value="Haval">Haval</option>
-                    <option value="Nissan">Nissan</option>
+                    {(POPULAR_MAKES.some((m) => m.toLowerCase() === make.toLowerCase())
+                      ? POPULAR_MAKES
+                      : [make, ...POPULAR_MAKES]
+                    ).map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -513,6 +667,11 @@ export default function SellCarPage({ onOpenAuth }) {
                     onChange={(e) => setCity(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/50 bg-surface-container-low text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
                   >
+                    {!cities.some(
+                      (c) => c.value !== "all" && c.label.toLowerCase() === city.toLowerCase()
+                    ) && (
+                      <option value={city}>{city}</option>
+                    )}
                     {cities
                       .filter((c) => c.value !== "all")
                       .map((c) => (
@@ -562,7 +721,6 @@ export default function SellCarPage({ onOpenAuth }) {
                     <option value="diesel">Diesel</option>
                     <option value="hybrid">Hybrid</option>
                     <option value="electric">Electric</option>
-                    <option value="cng">CNG</option>
                   </select>
                 </div>
 
@@ -584,47 +742,77 @@ export default function SellCarPage({ onOpenAuth }) {
 
             {/* Section 4: Photo Uploader with Live Preview */}
             <div className="pt-6 border-t border-outline-variant/30">
-              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">
-                  4
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">
+                    4
+                  </span>
+                  Car Photos (Up to 5) *
+                </h2>
+                <span className="text-xs font-semibold text-on-surface-variant">
+                  {existingImages.length + selectedFiles.length} / 5 selected
                 </span>
-                Car Photos (Up to 5) *
-              </h2>
+              </div>
               <p className="text-xs text-on-surface-variant mb-4">
                 Upload clear photos of front exterior, side profile, and interior dashboard.
               </p>
 
               {/* Upload Drop Area */}
-              <label className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border-2 border-dashed border-outline-variant/60 hover:border-primary bg-surface-container-low/50 hover:bg-surface-container cursor-pointer transition-all text-center group">
-                <span className="material-symbols-outlined text-4xl text-outline group-hover:text-primary transition-colors mb-2">
-                  add_photo_alternate
-                </span>
-                <span className="text-sm font-semibold text-on-surface">
-                  Click to select vehicle photos
-                </span>
-                <span className="text-xs text-on-surface-variant mt-1">
-                  Supported formats: JPEG, PNG, WEBP (Max 5MB each)
-                </span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                />
-              </label>
+              {existingImages.length + selectedFiles.length < 5 && (
+                <label className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border-2 border-dashed border-outline-variant/60 hover:border-primary bg-surface-container-low/50 hover:bg-surface-container cursor-pointer transition-all text-center group">
+                  <span className="material-symbols-outlined text-4xl text-outline group-hover:text-primary transition-colors mb-2">
+                    add_photo_alternate
+                  </span>
+                  <span className="text-sm font-semibold text-on-surface">
+                    Click to select vehicle photos
+                  </span>
+                  <span className="text-xs text-on-surface-variant mt-1">
+                    Supported formats: JPEG, PNG, WEBP (Max 5MB each)
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
 
-              {/* Instant Image Previews */}
-              {previewUrls.length > 0 && (
+              {/* Saved + New Image Previews */}
+              {(existingImages.length > 0 || previewUrls.length > 0) && (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  {previewUrls.map((url, idx) => (
+                  {existingImages.map((img, idx) => (
                     <div
-                      key={idx}
+                      key={`existing-${img.raw}-${idx}`}
                       className="relative aspect-[4/3] rounded-xl overflow-hidden bg-surface-container border border-outline-variant/30 group shadow-sm"
                     >
                       <img
+                        src={img.url}
+                        alt={`Saved ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingPhoto(idx)}
+                        className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/70 text-white hover:bg-error transition-colors"
+                        title="Remove saved photo"
+                      >
+                        <span className="material-symbols-outlined text-sm leading-none">close</span>
+                      </button>
+                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white">
+                        Saved {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                  {previewUrls.map((url, idx) => (
+                    <div
+                      key={`new-${idx}`}
+                      className="relative aspect-[4/3] rounded-xl overflow-hidden bg-surface-container border border-primary/40 group shadow-sm"
+                    >
+                      <img
                         src={url}
-                        alt={`Preview ${idx + 1}`}
+                        alt={`New photo ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
                       <button
@@ -635,8 +823,8 @@ export default function SellCarPage({ onOpenAuth }) {
                       >
                         <span className="material-symbols-outlined text-sm leading-none">close</span>
                       </button>
-                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/60 text-white">
-                        Photo {idx + 1}
+                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary text-on-primary">
+                        New {idx + 1}
                       </span>
                     </div>
                   ))}
@@ -660,25 +848,50 @@ export default function SellCarPage({ onOpenAuth }) {
 
             {/* Submit Action Buttons */}
             <div className="pt-6 border-t border-outline-variant/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => handleSubmit(false)}
-                className="px-5 py-3 rounded-xl border border-outline-variant/60 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors disabled:opacity-50"
-              >
-                Save as Draft
-              </button>
+              {editingCar && (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleCancelEdit}
+                  className="px-5 py-3 rounded-xl border border-outline-variant/50 text-on-surface-variant font-semibold text-sm hover:bg-surface-container transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              )}
+
+              {(!editingCar || editingCar.status !== "published") && (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => handleSubmit(false)}
+                  className="px-5 py-3 rounded-xl border border-outline-variant/60 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors disabled:opacity-50"
+                >
+                  {editingCar ? "Save Changes (Draft)" : "Save as Draft"}
+                </button>
+              )}
 
               <button
                 type="button"
                 disabled={isSubmitting}
-                onClick={() => handleSubmit(true)}
+                onClick={() =>
+                  handleSubmit(editingCar?.status === "published" ? false : true)
+                }
                 className="px-6 py-3 rounded-xl bg-primary text-on-primary font-semibold text-sm shadow-md hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Uploading & Submitting...</span>
+                    <span>{editingCar ? "Saving Changes..." : "Uploading & Submitting..."}</span>
+                  </>
+                ) : editingCar?.status === "published" ? (
+                  <>
+                    <span className="material-symbols-outlined text-base">save</span>
+                    <span>Save Live Changes</span>
+                  </>
+                ) : editingCar ? (
+                  <>
+                    <span className="material-symbols-outlined text-base">send</span>
+                    <span>Update & Submit for Review</span>
                   </>
                 ) : (
                   <>
@@ -697,6 +910,19 @@ export default function SellCarPage({ onOpenAuth }) {
       {/* TAB 2: MY LISTINGS VIEW */}
       {activeTab === "listings" && (
         <div className="space-y-6">
+          {listingsError && (
+            <div className="p-4 rounded-2xl bg-error/10 border border-error/25 text-error text-xs flex items-center justify-between gap-3">
+              <span>{listingsError}</span>
+              <button
+                type="button"
+                onClick={fetchSellerListings}
+                className="font-semibold underline shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {isLoadingListings ? (
             <div className="space-y-4">
               {[1, 2].map((i) => (
@@ -723,7 +949,11 @@ export default function SellCarPage({ onOpenAuth }) {
               </p>
               <button
                 type="button"
-                onClick={() => setActiveTab("create")}
+                onClick={() => {
+                  resetForm();
+                  setActiveTab("create");
+                  setSearchParams({});
+                }}
                 className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-sm hover:opacity-95"
               >
                 + List Your First Car
@@ -775,13 +1005,13 @@ export default function SellCarPage({ onOpenAuth }) {
                     className="p-4 sm:p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
                   >
                     {/* Left: Thumbnail & Details */}
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
                       <img
                         src={car.image}
                         alt={car.title}
                         className="w-24 sm:w-32 aspect-[4/3] rounded-xl object-cover bg-surface-container shrink-0 border border-outline-variant/30"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {statusBadge}
                           <span className="text-xs text-on-surface-variant">
@@ -797,13 +1027,27 @@ export default function SellCarPage({ onOpenAuth }) {
                         <p className="text-xs text-on-surface-variant mt-1">
                           {car.mileage} • {car.fuel} • {car.transmission}
                         </p>
+                        {car.status === "rejected" && car.rejectionReason && (
+                          <div className="mt-2 px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-xs text-rose-600 dark:text-rose-300">
+                            <span className="font-semibold">Moderation Note:</span>{" "}
+                            {car.rejectionReason}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Right: Actions */}
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
                       {car.status === "draft" && (
                         <>
+                          <button
+                            type="button"
+                            disabled={isLoadingAction}
+                            onClick={() => handleStartEdit(car)}
+                            className="px-3.5 py-2 rounded-xl border border-outline-variant/50 text-on-surface text-xs font-semibold hover:bg-surface-container transition-colors"
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             disabled={isLoadingAction}
@@ -824,8 +1068,46 @@ export default function SellCarPage({ onOpenAuth }) {
                         </>
                       )}
 
+                      {car.status === "rejected" && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isLoadingAction}
+                            onClick={() => handleStartEdit(car)}
+                            className="px-3.5 py-2 rounded-xl border border-outline-variant/50 text-on-surface text-xs font-semibold hover:bg-surface-container transition-colors"
+                          >
+                            Edit & Fix
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isLoadingAction}
+                            onClick={() => handleSubmitExisting(car.id)}
+                            className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-95 shadow-sm transition-opacity"
+                          >
+                            Resubmit
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isLoadingAction}
+                            onClick={() => handleDeleteCar(car.id)}
+                            className="p-2 rounded-xl border border-error/30 text-error hover:bg-error/10 transition-colors"
+                            title="Delete rejected listing"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </>
+                      )}
+
                       {car.status === "published" && (
                         <>
+                          <button
+                            type="button"
+                            disabled={isLoadingAction}
+                            onClick={() => handleStartEdit(car)}
+                            className="px-3.5 py-2 rounded-xl border border-outline-variant/50 text-on-surface text-xs font-semibold hover:bg-surface-container transition-colors"
+                          >
+                            Edit
+                          </button>
                           <Link
                             to={`/cars/${car.id}`}
                             className="px-3.5 py-2 rounded-xl border border-outline-variant/50 text-on-surface text-xs font-semibold hover:bg-surface-container transition-colors"
@@ -846,6 +1128,12 @@ export default function SellCarPage({ onOpenAuth }) {
                       {car.status === "pending_review" && (
                         <span className="text-xs text-on-surface-variant italic">
                           Awaiting admin inspection
+                        </span>
+                      )}
+
+                      {car.status === "sold" && (
+                        <span className="text-xs text-on-surface-variant font-medium">
+                          Transaction completed
                         </span>
                       )}
                     </div>
