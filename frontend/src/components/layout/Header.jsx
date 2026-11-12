@@ -81,12 +81,6 @@ export default function Header({
           >
             Sell Your Car
           </Link>
-          <a
-            className="px-4 py-1.5 rounded-full font-medium text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#price-guide"
-          >
-            Price Guide
-          </a>
           {user?.role === "admin" && (
             <Link
               className="px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider text-amber-500 hover:bg-amber-500/10 transition-colors flex items-center gap-1 border border-amber-500/30"
