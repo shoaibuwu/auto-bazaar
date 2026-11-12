@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Favorite from "../models/favorite.model.js";
 import Car from "../models/car.model.js";
 import ApiError from "../utils/ApiError.js";
@@ -11,6 +12,10 @@ import asyncHandler from "../utils/asyncHandler.js";
  */
 export const toggleFavorite = asyncHandler(async (req, res) => {
   const { carId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(carId)) {
+    throw new ApiError(400, "Invalid vehicle listing ID");
+  }
 
   // Check if car exists
   const car = await Car.findById(carId);
@@ -89,6 +94,10 @@ export const getMyFavorites = asyncHandler(async (req, res) => {
  */
 export const checkIsFavorited = asyncHandler(async (req, res) => {
   const { carId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(carId)) {
+    throw new ApiError(400, "Invalid vehicle listing ID");
+  }
 
   const favorite = await Favorite.findOne({
     user: req.user._id,

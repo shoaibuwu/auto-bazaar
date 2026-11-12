@@ -18,6 +18,7 @@ export default function MobileBottomNav({ favoritesCount = 3, activeTab = "brows
           <button
             key={item.id}
             type="button"
+            data-account-menu-trigger={item.id === "account" ? "true" : undefined}
             onClick={() => onTabChange && onTabChange(item.id)}
             className={`relative flex flex-col items-center justify-center transition-colors ${
               isActive ? "text-primary font-semibold" : "text-on-surface-variant hover:text-on-surface"

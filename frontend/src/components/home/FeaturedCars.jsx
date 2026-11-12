@@ -9,7 +9,10 @@ export default function FeaturedCars({
   onResetFilters
 }) {
   return (
-    <section className="w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-tablet lg:px-margin py-8 md:py-12">
+    <section
+      id="browse"
+      className="w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-tablet lg:px-margin py-8 md:py-12"
+    >
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-space-xs mb-space-lg">
         <div className="flex items-baseline gap-space-sm flex-wrap">

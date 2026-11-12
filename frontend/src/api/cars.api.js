@@ -85,12 +85,28 @@ export const toggleFavoriteCar = async (carId) => {
 };
 
 /**
- * Fetch current user's favorites
+ * Fetch current user's favorite car IDs
  */
 export const getUserFavorites = async () => {
   const response = await api.get("/favorites");
   if (response.success && response.data?.favorites) {
     return response.data.favorites.map((f) => f.car?._id || f.car).filter(Boolean);
+  }
+  return [];
+};
+
+/**
+ * Fetch full populated favorite car listings from MongoDB
+ */
+export const getUserFavoriteCars = async () => {
+  const response = await api.get("/favorites");
+  if (response.success && response.data?.favorites) {
+    return response.data.favorites
+      .filter((f) => f.car)
+      .map((f) => ({
+        ...formatCar(f.car),
+        savedAt: f.createdAt || null,
+      }));
   }
   return [];
 };

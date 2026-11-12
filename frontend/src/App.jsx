@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -10,13 +10,34 @@ import SellCarPage from "./pages/SellCarPage";
 import AdminModerationPage from "./pages/AdminModerationPage";
 import InquiriesPage from "./pages/InquiriesPage";
 import InspectionsPage from "./pages/InspectionsPage";
+import SavedCarsPage from "./pages/SavedCarsPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
+
+const GUEST_FAVORITES_KEY = "autobazaar_guest_favorites";
+
+const getMobileTabForPath = (pathname) => {
+  if (pathname === "/sell") return "sell";
+  if (pathname === "/inspections") return "inspection";
+  if (pathname === "/saved") return "saved";
+  if (pathname === "/") return "browse";
+  return "";
+};
+
+const readGuestFavorites = () => {
+  try {
+    const raw = localStorage.getItem(GUEST_FAVORITES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? new Set(parsed.filter(Boolean)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Check if current route is within Admin console
   const isAdminRoute = location.pathname.startsWith("/admin");
@@ -50,37 +71,80 @@ export default function App() {
   // Auth modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Favorites state (Set of favorited car ObjectIds)
-  const [favorites, setFavorites] = useState(new Set());
+  // Favorites state (Set of favorited car ObjectIds) + sync coordination
+  const [favorites, setFavorites] = useState(readGuestFavorites);
+  const [isFavoritesSyncing, setIsFavoritesSyncing] = useState(true);
+  const [favoritesSyncVersion, setFavoritesSyncVersion] = useState(0);
+  const pendingFavIdsRef = useRef(new Set());
 
   // Active mobile bottom nav tab
-  const [activeMobileTab, setActiveMobileTab] = useState("browse");
+  const [activeMobileTab, setActiveMobileTab] = useState(
+    () => getMobileTabForPath(location.pathname) || "browse"
+  );
 
   // Keep mobile bottom nav tab highlighted for current route
   useEffect(() => {
-    if (location.pathname === "/sell") setActiveMobileTab("sell");
-    else if (location.pathname === "/inspections") setActiveMobileTab("inspection");
-    else if (location.pathname === "/") setActiveMobileTab("browse");
+    setActiveMobileTab(getMobileTabForPath(location.pathname));
   }, [location.pathname]);
 
-  // Sync user favorites from MongoDB when logged in
+  // Sync user favorites from MongoDB when logged in (merging any guest favorites first),
+  // or load guest storage when logged out — always waiting for auth check to settle first
   const loadUserFavorites = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (authLoading) {
+      setIsFavoritesSyncing(true);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setFavorites(readGuestFavorites());
+      setFavoritesSyncVersion((v) => v + 1);
+      setIsFavoritesSyncing(false);
+      return;
+    }
+
+    setIsFavoritesSyncing(true);
     try {
-      const favIds = await getUserFavorites();
-      setFavorites(new Set(favIds));
+      const existingFavIds = await getUserFavorites();
+      const syncedSet = new Set(existingFavIds);
+
+      // Merge any cars saved during guest browsing into MongoDB account once after sign-in
+      const guestSet = readGuestFavorites();
+      const toMerge = Array.from(guestSet).filter((id) => !syncedSet.has(id));
+      if (toMerge.length > 0) {
+        const results = await Promise.allSettled(
+          toMerge.map((id) => toggleFavoriteCar(id))
+        );
+        results.forEach((result, idx) => {
+          if (result.status === "fulfilled" && result.value?.success && result.value?.data?.isFavorited) {
+            syncedSet.add(toMerge[idx]);
+          }
+        });
+        try {
+          localStorage.removeItem(GUEST_FAVORITES_KEY);
+        } catch {}
+      }
+
+      setFavorites(syncedSet);
     } catch (err) {
       console.warn("Could not load user favorites:", err.message);
+    } finally {
+      setFavoritesSyncVersion((v) => v + 1);
+      setIsFavoritesSyncing(false);
     }
-  }, [isAuthenticated]);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
     loadUserFavorites();
   }, [loadUserFavorites]);
 
-  // Toggle favorite car
+  // Toggle favorite car (returns true on success, false if failed)
   const handleToggleFavorite = async (carId) => {
+    if (!carId || pendingFavIdsRef.current.has(carId)) {
+      return false;
+    }
+
     if (isAuthenticated) {
+      pendingFavIdsRef.current.add(carId);
       try {
         const res = await toggleFavoriteCar(carId);
         if (res.success) {
@@ -93,14 +157,21 @@ export default function App() {
             }
             return next;
           });
-          return;
+          return true;
         }
+        return false;
       } catch (err) {
         console.warn("Favorite API toggle failed:", err.message);
+        if (err.statusCode === 401) {
+          setIsAuthModalOpen(true);
+        }
+        return false;
+      } finally {
+        pendingFavIdsRef.current.delete(carId);
       }
     }
 
-    // Local state fallback (for visitors)
+    // Local storage fallback (for visitors)
     setFavorites((prev) => {
       const next = new Set(prev);
       if (next.has(carId)) {
@@ -108,9 +179,43 @@ export default function App() {
       } else {
         next.add(carId);
       }
+      try {
+        localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(Array.from(next)));
+      } catch {}
       return next;
     });
+    return true;
   };
+
+  // Focus homepage search bar from any route (Header button or Ctrl/Cmd+K)
+  const handleOpenSearch = useCallback(() => {
+    const input = document.getElementById("car-query");
+    if (input) {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+      input.focus();
+      return;
+    }
+    navigate("/");
+    setTimeout(() => {
+      const target = document.getElementById("car-query");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.focus();
+      }
+    }, 150);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (isAdminRoute) return;
+    const handleShortcut = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        handleOpenSearch();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [isAdminRoute, handleOpenSearch]);
 
   // Mobile Bottom Navigation handler
   const handleMobileNavChange = (tabId) => {
@@ -119,9 +224,13 @@ export default function App() {
       navigate("/sell");
     } else if (tabId === "inspection") {
       navigate("/inspections");
+    } else if (tabId === "saved") {
+      navigate("/saved");
     } else if (tabId === "account") {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
+      } else {
+        window.dispatchEvent(new CustomEvent("autobazaar:toggle-account-menu"));
       }
     } else if (tabId === "browse") {
       navigate("/");
@@ -137,10 +246,7 @@ export default function App() {
           favoritesCount={favorites.size}
           isDarkMode={isDarkMode}
           onToggleTheme={handleToggleTheme}
-          onOpenSearch={() => {
-            const input = document.getElementById("car-query");
-            if (input) input.focus();
-          }}
+          onOpenSearch={handleOpenSearch}
           onOpenAuth={() => setIsAuthModalOpen(true)}
         />
       )}
@@ -195,6 +301,18 @@ export default function App() {
               />
             }
           />
+          <Route
+            path="/saved"
+            element={
+              <SavedCarsPage
+                favorites={favorites}
+                isFavoritesSyncing={authLoading || isFavoritesSyncing}
+                favoritesSyncVersion={favoritesSyncVersion}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+              />
+            }
+          />
         </Routes>
       </main>
 
@@ -213,7 +331,10 @@ export default function App() {
       {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setActiveMobileTab(getMobileTabForPath(location.pathname));
+        }}
       />
     </div>
   );
