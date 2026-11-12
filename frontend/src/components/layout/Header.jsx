@@ -16,16 +16,37 @@ export default function Header({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close dropdown on click outside
+  // Close dropdown on click outside, Escape key, or route navigation
   useEffect(() => {
     const handleClickOutside = (event) => {
+      if (event.target?.closest?.("[data-account-menu-trigger]")) {
+        return;
+      }
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsDropdownOpen(false);
+      }
+    };
+    const handleOpenAccountMenu = () => {
+      setIsDropdownOpen((prev) => !prev);
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("autobazaar:toggle-account-menu", handleOpenAccountMenu);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("autobazaar:toggle-account-menu", handleOpenAccountMenu);
+    };
   }, []);
+
+  useEffect(() => {
+    setIsDropdownOpen(false);
+  }, [location.pathname]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors duration-200">
@@ -110,19 +131,33 @@ export default function Header({
             </kbd>
           </button>
 
-          {/* Saved / Favorites Badge */}
-          <a
+          {/* Saved / Favorites Link */}
+          <Link
+            to="/saved"
             aria-label="Saved Cars"
-            className="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#favorites"
+            title="Saved Cars"
+            className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+              location.pathname === "/saved"
+                ? "bg-surface-container text-primary"
+                : "hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
+            }`}
           >
-            <span className="material-symbols-outlined text-xl">favorite</span>
+            <span
+              className="material-symbols-outlined text-xl"
+              style={
+                location.pathname === "/saved"
+                  ? { fontVariationSettings: "'FILL' 1" }
+                  : undefined
+              }
+            >
+              favorite
+            </span>
             {favoritesCount > 0 && (
               <span className="absolute top-1 right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-primary text-on-primary font-label-sm text-[10px] font-semibold leading-none shadow-sm">
                 {favoritesCount}
               </span>
             )}
-          </a>
+          </Link>
 
           {/* Messages / Live Inquiries Link with Real-Time Unread Badge */}
           <Link
@@ -217,14 +252,21 @@ export default function Header({
                         )}
                       </Link>
 
-                      <a
-                        href="#favorites"
+                      <Link
+                        to="/saved"
                         onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                        className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base">favorite</span>
-                        Saved Cars ({favoritesCount})
-                      </a>
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base">favorite</span>
+                          <span>Saved Cars</span>
+                        </div>
+                        {favoritesCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary">
+                            {favoritesCount}
+                          </span>
+                        )}
+                      </Link>
                     </div>
 
                     <div className="pt-1 border-t border-outline-variant/30">
