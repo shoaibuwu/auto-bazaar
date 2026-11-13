@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { getIO } from "../socket/socket.js";
+import { notifyOnChatMessage } from "../utils/notification.util.js";
 
 const POPULATE_CAR_FIELDS =
   "title price images make model year city mileage fuel transmission status";
@@ -254,6 +255,15 @@ export const createInquiry = asyncHandler(async (req, res) => {
     }
   }
 
+  // Create persistent notification for seller
+  notifyOnChatMessage({
+    inquiry: populated,
+    sender: req.user,
+    text: message,
+    messageType,
+    offerPrice: resolvedOfferPrice,
+  }).catch((err) => console.error("Async chat notification failed:", err));
+
   return res.status(isNewThread ? 201 : 200).json(
     new ApiResponse(
       isNewThread ? 201 : 200,
@@ -482,6 +492,15 @@ export const sendInquiryMessage = asyncHandler(async (req, res) => {
       inquiry: sellerFormatted,
     });
   }
+
+  // Create persistent notification for the recipient
+  notifyOnChatMessage({
+    inquiry,
+    sender: req.user,
+    text,
+    messageType,
+    offerPrice: newMessageObj.offerPrice,
+  }).catch((err) => console.error("Async chat reply notification failed:", err));
 
   return res.status(201).json(
     new ApiResponse(

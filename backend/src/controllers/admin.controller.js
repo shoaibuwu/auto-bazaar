@@ -7,6 +7,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { recordAuditLog, verifyAuditChainIntegrity } from "../utils/auditLogger.js";
 import { seedAuditHistoryIfEmpty } from "../utils/seedAuditHistory.js";
+import { notifyCityUsersOnNewListing } from "../utils/notification.util.js";
 
 /**
  * @desc    Get all cars pending admin review
@@ -93,6 +94,11 @@ export const approveCar = asyncHandler(async (req, res) => {
   car.status = "published";
   car.rejectionReason = "";
   await car.save();
+
+  // Send real-time notifications to users in this vehicle's city
+  notifyCityUsersOnNewListing(car).catch((err) =>
+    console.error("Async notification dispatch failed for listing approval:", err)
+  );
 
   // Audit Ledger Event
   await recordAuditLog({

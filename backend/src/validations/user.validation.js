@@ -26,7 +26,28 @@ export const updateProfileSchema = z
       .url("Avatar must be a valid URL")
       .optional()
       .or(z.literal("")),
+    city: z
+      .string()
+      .max(50, "City name cannot exceed 50 characters")
+      .trim()
+      .optional()
+      .or(z.literal("")),
   })
   .strict({
     message: "You cannot update unauthorized fields (such as role, email, or status)",
   });
+
+/**
+ * Validation schema for changing user password
+ */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ required_error: "Current password is required" })
+      .min(1, "Current password is required"),
+    newPassword: z
+      .string({ required_error: "New password is required" })
+      .min(8, "New password must be at least 8 characters long")
+      .max(100, "New password cannot exceed 100 characters"),
+  })
+  .strict();

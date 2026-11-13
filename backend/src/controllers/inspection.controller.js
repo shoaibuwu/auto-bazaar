@@ -8,6 +8,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { recordAuditLog } from "../utils/auditLogger.js";
 import { seedInspectionSystemIfEmpty } from "../utils/seedInspectionData.js";
+import { notifyOnInspectionUpdate } from "../utils/notification.util.js";
 
 /**
  * Derive certification grade & Car status from numeric score and MongoDB standard
@@ -279,6 +280,11 @@ export const createInspectionBooking = asyncHandler(async (req, res) => {
     await linkedCar.save();
   }
 
+  // Send real-time notification to booking user
+  notifyOnInspectionUpdate({ booking, status: "confirmed" }).catch((err) =>
+    console.error("Async inspection confirmed notification failed:", err)
+  );
+
   const populatedBooking = await InspectionBooking.findById(booking._id)
     .populate("hub", "city name address baysLabel phone")
     .populate("car", "title make model year price city images inspectionScore inspectionStatus seller")
@@ -488,6 +494,13 @@ export const completeInspectionBooking = asyncHandler(async (req, res) => {
   };
 
   await booking.save();
+
+  // Send real-time notification with completed report score
+  notifyOnInspectionUpdate({
+    booking,
+    status: "completed",
+    score: roundedScore,
+  }).catch((err) => console.error("Async inspection completed notification failed:", err));
 
   if (booking.car) {
     await Car.findByIdAndUpdate(booking.car, {
