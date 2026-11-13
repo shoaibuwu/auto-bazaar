@@ -52,6 +52,7 @@ const baseCarSchema = z.object({
   city: z.string().trim().optional().default("Lahore"),
   bodyType: z.string().trim().optional().default("sedan"),
   description: z.string().trim().optional().default(""),
+  images: z.array(z.string()).optional(),
 });
 
 // Normalize keys and auto-generate title if missing

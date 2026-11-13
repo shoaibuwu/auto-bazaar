@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
+import NotificationsDropdown from "./NotificationsDropdown";
 
 export default function Header({
   favoritesCount = 0,
@@ -12,9 +13,16 @@ export default function Header({
 }) {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
-  const { unreadCount, isConnected } = useSocket();
+  const { unreadCount, unreadNotificationCount, isConnected } = useSocket();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Close menus on route change
+  useEffect(() => {
+    setIsDropdownOpen(false);
+    setIsNotificationsOpen(false);
+  }, [location.pathname]);
 
   // Close dropdown on click outside, Escape key, or route navigation
   useEffect(() => {
@@ -102,6 +110,19 @@ export default function Header({
           >
             Sell Your Car
           </Link>
+          {isAuthenticated && (
+            <Link
+              aria-current={location.pathname === "/notifications" ? "page" : undefined}
+              className={`px-4 py-1.5 rounded-full transition-all ${
+                location.pathname === "/notifications"
+                  ? "bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+                  : "font-medium text-on-surface-variant hover:text-on-surface"
+              }`}
+              to="/notifications"
+            >
+              Notifications
+            </Link>
+          )}
           {user?.role === "admin" && (
             <Link
               className="px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider text-amber-500 hover:bg-amber-500/10 transition-colors flex items-center gap-1 border border-amber-500/30"
@@ -175,6 +196,35 @@ export default function Header({
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-surface" />
             ) : null}
           </Link>
+
+          {/* Notifications Bell with Real-Time Dropdown Popover */}
+          {isAuthenticated && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Notifications"
+                title="Notifications"
+                onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                  isNotificationsOpen || location.pathname === "/notifications"
+                    ? "bg-surface-container text-primary"
+                    : "hover:bg-surface-container text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#6366F1] text-white font-label-sm text-[10px] font-bold leading-none shadow-sm animate-pulse">
+                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+
+              <NotificationsDropdown
+                isOpen={isNotificationsOpen}
+                onClose={() => setIsNotificationsOpen(false)}
+              />
+            </div>
+          )}
 
           {/* Dark / Light Mode Toggle */}
           <button
@@ -253,6 +303,22 @@ export default function Header({
                       </Link>
 
                       <Link
+                        to="/notifications"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base">notifications</span>
+                          <span>Notifications</span>
+                        </div>
+                        {unreadNotificationCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#6366F1] text-white">
+                            {unreadNotificationCount}
+                          </span>
+                        )}
+                      </Link>
+
+                      <Link
                         to="/saved"
                         onClick={() => setIsDropdownOpen(false)}
                         className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
@@ -266,6 +332,15 @@ export default function Header({
                             {favoritesCount}
                           </span>
                         )}
+                      </Link>
+
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">badge</span>
+                        <span>Profile & Settings</span>
                       </Link>
                     </div>
 

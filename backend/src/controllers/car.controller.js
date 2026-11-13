@@ -3,6 +3,7 @@ import Car from "../models/car.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { notifyFavoritedUsersOnPriceDrop } from "../utils/notification.util.js";
 
 const assertValidCarId = (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -133,10 +134,10 @@ export const getPublicCars = asyncHandler(async (req, res) => {
  * @access  Private (Seller/Admin)
  */
 export const createCar = asyncHandler(async (req, res) => {
-  // Extract uploaded image relative paths from req.files
+  // Extract uploaded image relative paths from req.files or fallback to body images
   const images = req.files && req.files.length > 0
     ? req.files.map((file) => `/uploads/cars/${file.filename}`)
-    : [];
+    : (Array.isArray(req.body.images) ? req.body.images : []);
 
   const car = await Car.create({
     ...req.body,
@@ -248,6 +249,8 @@ export const updateCar = asyncHandler(async (req, res) => {
     car.images.push(...newImages);
   }
 
+  const oldPrice = car.price;
+
   // Update provided validated fields
   Object.assign(car, updateFields);
 
@@ -258,6 +261,17 @@ export const updateCar = asyncHandler(async (req, res) => {
   }
 
   const updatedCar = await car.save();
+
+  // If price was decreased on a published vehicle, notify favorited users
+  if (
+    updateFields.price !== undefined &&
+    Number(updateFields.price) < oldPrice &&
+    updatedCar.status === "published"
+  ) {
+    notifyFavoritedUsersOnPriceDrop(updatedCar, oldPrice, Number(updateFields.price)).catch(
+      (err) => console.error("Async price drop notification failed:", err)
+    );
+  }
 
   return res
     .status(200)

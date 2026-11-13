@@ -9,6 +9,7 @@ import React, {
 import { io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 import { getMyInquiriesWithMeta } from "../api/inquiries.api";
+import { getUnreadNotificationCount } from "../api/notifications.api";
 
 const SocketContext = createContext(null);
 
@@ -18,7 +19,8 @@ export function SocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0); // Inquiries unread
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0); // System notifications unread
   const [onlineMap, setOnlineMap] = useState({});
   const socketRef = useRef(null);
 
@@ -32,6 +34,19 @@ export function SocketProvider({ children }) {
       setUnreadCount(totalUnread || 0);
     } catch {
       // Silent fail if unauthenticated or transient network hiccup
+    }
+  }, [isAuthenticated]);
+
+  const refreshNotificationCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setUnreadNotificationCount(0);
+      return;
+    }
+    try {
+      const count = await getUnreadNotificationCount();
+      setUnreadNotificationCount(count || 0);
+    } catch {
+      // Silent fail if network hiccup
     }
   }, [isAuthenticated]);
 
@@ -54,12 +69,14 @@ export function SocketProvider({ children }) {
       setSocket(null);
       setIsConnected(false);
       setUnreadCount(0);
+      setUnreadNotificationCount(0);
       setOnlineMap({});
       return;
     }
 
-    // Fetch initial unread badge count
+    // Fetch initial unread counts
     refreshUnreadCount();
+    refreshNotificationCount();
 
     // Establish authenticated WebSocket / Socket.IO connection using HttpOnly cookie
     const s = io(SOCKET_URL, {
@@ -76,6 +93,7 @@ export function SocketProvider({ children }) {
     s.on("connect", () => {
       setIsConnected(true);
       refreshUnreadCount();
+      refreshNotificationCount();
     });
 
     s.on("disconnect", () => {
@@ -102,6 +120,25 @@ export function SocketProvider({ children }) {
     s.on("inquiry:read", handleInboxChange);
     s.on("inquiry:deleted", handleInboxChange);
 
+    // Live Notification Events
+    s.on("notification:new", (newNotif) => {
+      setUnreadNotificationCount((prev) => prev + 1);
+      // Dispatch browser custom event so any active notifications view can append reactively
+      try {
+        window.dispatchEvent(
+          new CustomEvent("autobazaar:new_notification", { detail: newNotif })
+        );
+      } catch (e) {
+        console.error("Event dispatch error:", e);
+      }
+    });
+
+    s.on("notification:unread_count", (cnt) => {
+      if (typeof cnt === "number") {
+        setUnreadNotificationCount(cnt);
+      }
+    });
+
     return () => {
       s.off("connect");
       s.off("disconnect");
@@ -111,19 +148,24 @@ export function SocketProvider({ children }) {
       s.off("inquiry:updated", handleInboxChange);
       s.off("inquiry:read", handleInboxChange);
       s.off("inquiry:deleted", handleInboxChange);
+      s.off("notification:new");
+      s.off("notification:unread_count");
       s.disconnect();
       socketRef.current = null;
       setSocket(null);
       setIsConnected(false);
     };
-  }, [isAuthenticated, user?._id, refreshUnreadCount]);
+  }, [isAuthenticated, user?._id, refreshUnreadCount, refreshNotificationCount]);
 
   const value = {
     socket,
     isConnected,
     unreadCount,
+    unreadNotificationCount,
     onlineMap,
     refreshUnreadCount,
+    refreshNotificationCount,
+    setUnreadNotificationCount,
     checkUsersOnline,
   };
 
@@ -139,4 +181,3 @@ export function useSocket() {
   }
   return context;
 }
-

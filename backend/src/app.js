@@ -14,6 +14,7 @@ import adminRouter from "./routes/admin.routes.js";
 import favoriteRouter from "./routes/favorite.routes.js";
 import inquiryRouter from "./routes/inquiry.routes.js";
 import inspectionRouter from "./routes/inspection.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -80,6 +81,7 @@ app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/favorites", favoriteRouter);
 app.use("/api/v1/inquiries", inquiryRouter);
 app.use("/api/v1/inspections", inspectionRouter);
+app.use("/api/v1/notifications", notificationRouter);
 
 // Catch-all 404 handler
 app.use(notFound);

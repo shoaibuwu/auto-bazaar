@@ -11,6 +11,8 @@ import AdminModerationPage from "./pages/AdminModerationPage";
 import InquiriesPage from "./pages/InquiriesPage";
 import InspectionsPage from "./pages/InspectionsPage";
 import SavedCarsPage from "./pages/SavedCarsPage";
+import ProfilePage from "./pages/ProfilePage";
+import NotificationsPage from "./pages/NotificationsPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
@@ -20,6 +22,7 @@ const getMobileTabForPath = (pathname) => {
   if (pathname === "/sell") return "sell";
   if (pathname === "/inspections") return "inspection";
   if (pathname === "/saved") return "saved";
+  if (pathname === "/profile") return "account";
   if (pathname === "/") return "browse";
   return "";
 };
@@ -230,7 +233,7 @@ export default function App() {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
       } else {
-        window.dispatchEvent(new CustomEvent("autobazaar:toggle-account-menu"));
+        navigate("/profile");
       }
     } else if (tabId === "browse") {
       navigate("/");
@@ -312,6 +315,14 @@ export default function App() {
                 onOpenAuth={() => setIsAuthModalOpen(true)}
               />
             }
+          />
+          <Route
+            path="/profile"
+            element={<ProfilePage onOpenAuth={() => setIsAuthModalOpen(true)} />}
+          />
+          <Route
+            path="/notifications"
+            element={<NotificationsPage />}
           />
         </Routes>
       </main>
