@@ -11,7 +11,37 @@ export async function getNotifications({ filter = "all", page = 1, limit = 40 } 
   const response = await api.get("/notifications", {
     params: { filter, page, limit },
   });
-  return response?.data || response || {};
+
+  // response is the backend payload unwrapped by client.js interceptor:
+  // e.g. { success: true, counts: {...}, pagination: {...}, data: [...] }
+  const items = Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response)
+    ? response
+    : [];
+
+  const counts = response?.counts || {
+    all: items.length,
+    unread: items.filter((n) => !n.isRead).length,
+    price: items.filter((n) => n.type === "PRICE_DROP").length,
+    inspection: items.filter((n) => n.type === "INSPECTION_UPDATE").length,
+    chat: items.filter((n) => n.type === "INQUIRY_MESSAGE" || n.type === "OFFER_RECEIVED").length,
+  };
+
+  const pagination = response?.pagination || {
+    page,
+    limit,
+    total: items.length,
+    totalPages: 1,
+  };
+
+  return {
+    success: response?.success ?? true,
+    data: items,
+    notifications: items,
+    counts,
+    pagination,
+  };
 }
 
 /**
@@ -19,8 +49,8 @@ export async function getNotifications({ filter = "all", page = 1, limit = 40 } 
  */
 export async function getUnreadNotificationCount() {
   const response = await api.get("/notifications/unread-count");
-  const data = response?.data || response || {};
-  return data.unreadCount ?? 0;
+  const count = response?.unreadCount ?? response?.data?.unreadCount ?? 0;
+  return typeof count === "number" ? count : 0;
 }
 
 /**

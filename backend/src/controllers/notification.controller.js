@@ -1,7 +1,4 @@
 import Notification from "../models/notification.model.js";
-import {
-  seedStarterNotificationsIfEmpty,
-} from "../utils/notification.util.js";
 import { getIO } from "../socket/socket.js";
 
 /**
@@ -11,9 +8,6 @@ import { getIO } from "../socket/socket.js";
 export async function getMyNotifications(req, res) {
   try {
     const userId = req.user._id;
-
-    // Auto-seed starter notifications if user's inbox is empty
-    await seedStarterNotificationsIfEmpty(userId, req.user.city || "Karachi");
 
     const { filter = "all", limit = 40, page = 1 } = req.query;
 

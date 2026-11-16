@@ -13,6 +13,7 @@ import InspectionsPage from "./pages/InspectionsPage";
 import SavedCarsPage from "./pages/SavedCarsPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
+import BuyerDashboardPage from "./pages/BuyerDashboardPage";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
@@ -323,6 +324,16 @@ export default function App() {
           <Route
             path="/notifications"
             element={<NotificationsPage />}
+          />
+          <Route
+            path="/buyer-dashboard"
+            element={
+              <BuyerDashboardPage
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+              />
+            }
           />
         </Routes>
       </main>
