@@ -112,6 +112,19 @@ export default function Header({
           </Link>
           {isAuthenticated && (
             <Link
+              aria-current={location.pathname === "/buyer-dashboard" ? "page" : undefined}
+              className={`px-4 py-1.5 rounded-full transition-all ${
+                location.pathname === "/buyer-dashboard"
+                  ? "bg-surface-container-lowest text-on-surface font-semibold shadow-sm"
+                  : "font-medium text-on-surface-variant hover:text-on-surface"
+              }`}
+              to="/buyer-dashboard"
+            >
+              Buyer Dashboard
+            </Link>
+          )}
+          {isAuthenticated && (
+            <Link
               aria-current={location.pathname === "/notifications" ? "page" : undefined}
               className={`px-4 py-1.5 rounded-full transition-all ${
                 location.pathname === "/notifications"
@@ -300,6 +313,15 @@ export default function Header({
                             {unreadCount}
                           </span>
                         )}
+                      </Link>
+
+                      <Link
+                        to="/buyer-dashboard"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container rounded-lg transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base">dashboard</span>
+                        <span>Buyer Dashboard</span>
                       </Link>
 
                       <Link

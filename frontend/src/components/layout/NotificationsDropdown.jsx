@@ -43,14 +43,28 @@ export default function NotificationsDropdown({ isOpen, onClose, onOpenPreferenc
     try {
       setLoading(true);
       const res = await getNotifications({ filter, limit: 15 });
-      if (res && res.data) {
-        setNotifications(res.data);
-      }
-      if (res && res.counts) {
+      const items = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.notifications)
+        ? res.notifications
+        : Array.isArray(res)
+        ? res
+        : [];
+      setNotifications(items);
+
+      if (res?.counts) {
         setCounts(res.counts);
         if (typeof res.counts.unread === "number") {
           setUnreadNotificationCount(res.counts.unread);
         }
+      } else {
+        const unread = items.filter((n) => !n.isRead).length;
+        setCounts({
+          all: items.length,
+          unread,
+          price: items.filter((n) => n.type === "PRICE_DROP").length,
+        });
+        setUnreadNotificationCount(unread);
       }
     } catch (err) {
       console.error("Failed to load notifications dropdown feed:", err);

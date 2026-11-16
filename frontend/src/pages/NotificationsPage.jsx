@@ -94,14 +94,28 @@ export default function NotificationsPage() {
       try {
         setLoading(true);
         const res = await getNotifications({ filter, limit: 50 });
-        if (res?.data) {
-          setNotifications(res.data);
-        }
+        const items = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.notifications)
+          ? res.notifications
+          : Array.isArray(res)
+          ? res
+          : [];
+        setNotifications(items);
+
         if (res?.counts) {
           setCounts(res.counts);
           if (typeof res.counts.unread === "number") {
             setUnreadNotificationCount(res.counts.unread);
           }
+        } else {
+          setCounts({
+            all: items.length,
+            unread: items.filter((n) => !n.isRead).length,
+            price: items.filter((n) => n.type === "PRICE_DROP").length,
+            inspection: items.filter((n) => n.type === "INSPECTION_UPDATE").length,
+            chat: items.filter((n) => n.type === "INQUIRY_MESSAGE" || n.type === "OFFER_RECEIVED").length,
+          });
         }
       } catch (err) {
         console.error("Failed to load notifications:", err);
