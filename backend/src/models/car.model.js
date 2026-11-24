@@ -109,6 +109,11 @@ const carSchema = new mongoose.Schema(
       ref: "InspectionBooking",
       default: null,
     },
+    embedding: {
+      type: [Number],
+      default: [],
+      select: false, // Hidden from regular listings, retrieved when doing vector matching
+    },
   },
   {
     timestamps: true,
