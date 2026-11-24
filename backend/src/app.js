@@ -16,6 +16,7 @@ import inquiryRouter from "./routes/inquiry.routes.js";
 import inspectionRouter from "./routes/inspection.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import buyerDashboardRouter from "./routes/buyerDashboard.routes.js";
+import aiAdvisorRouter from "./routes/aiAdvisor.routes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -84,6 +85,7 @@ app.use("/api/v1/inquiries", inquiryRouter);
 app.use("/api/v1/inspections", inspectionRouter);
 app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/buyer-dashboard", buyerDashboardRouter);
+app.use("/api/v1/ai", aiAdvisorRouter);
 
 // Catch-all 404 handler
 app.use(notFound);
