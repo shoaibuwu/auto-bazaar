@@ -14,6 +14,7 @@ import SavedCarsPage from "./pages/SavedCarsPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import BuyerDashboardPage from "./pages/BuyerDashboardPage";
+import AiChatWidget from "./components/ai/AiChatWidget";
 import { useAuth } from "./context/AuthContext";
 import { toggleFavoriteCar, getUserFavorites } from "./api/cars.api";
 
@@ -349,6 +350,9 @@ export default function App() {
           onTabChange={handleMobileNavChange}
         />
       )}
+
+      {/* Website AI Chat powered by AutoBazaar MCP Server (Hidden on Admin Console) */}
+      {!isAdminRoute && <AiChatWidget />}
 
       {/* Authentication Modal */}
       <AuthModal

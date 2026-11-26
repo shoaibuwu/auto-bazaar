@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { cities, budgetOptions, bodyTypes } from "../../data/filters";
 import { askAiAdvisor } from "../../api/ai.api";
 
+const ENABLE_LOCAL_RAG = false;
+
 function formatPKR(val) {
   if (typeof val !== "number" || isNaN(val)) return "PKR 0";
   if (val >= 10000000) {
@@ -95,7 +97,7 @@ export default function HeroSearch({
   };
 
   return (
-    <section className="relative w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-tablet lg:px-margin pt-12 md:pt-16 pb-12 flex flex-col items-center text-center">
+    <section className={`relative w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-tablet lg:px-margin ${ENABLE_LOCAL_RAG ? "pt-12 md:pt-16" : "pt-12 md:pt-20"} pb-12 flex flex-col items-center text-center`}>
       {/* Subtle Ambient Glow */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 max-w-3xl h-64 bg-gradient-to-b from-primary-fixed/30 to-transparent blur-3xl pointer-events-none -z-10 rounded-full"></div>
 
@@ -110,13 +112,14 @@ export default function HeroSearch({
         Find your next car in Pakistan
       </h1>
 
-      <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed mb-6">
+      <p className={`font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed ${ENABLE_LOCAL_RAG ? "mb-6" : "mb-space-xl"}`}>
         Verified used cars with transparent 200-point inspection reports.
       </p>
 
       {/* ========================================================================= */}
       {/* DEDICATED AI CAR FINDER BAR (OPTION B) - PLACED DIRECTLY ABOVE SEARCH BAR */}
       {/* ========================================================================= */}
+      {ENABLE_LOCAL_RAG && (
       <div className="w-full max-w-4xl mb-4 text-left">
         <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-blue-500/40 shadow-[0_4px_25px_rgba(79,70,229,0.12)]">
           <div className="bg-surface-container-lowest dark:bg-[#121826] rounded-[15px] p-2.5 sm:p-3 flex flex-col gap-2.5">
@@ -338,6 +341,7 @@ export default function HeroSearch({
           </div>
         )}
       </div>
+      )}
 
       {/* ========================================================================= */}
       {/* EXISTING TRADITIONAL ELEVATED SEARCH COMPONENT                            */}
