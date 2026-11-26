@@ -5,6 +5,7 @@ dotenv.config();
 import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./socket/socket.js";
+import { warmUpOllamaModel } from "./services/mcpChat.service.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -33,6 +34,7 @@ const startServer = async () => {
       console.log(
         `🩺 Health check available at: http://localhost:${PORT}/api/v1/health`,
       );
+      warmUpOllamaModel();
     });
 
     // Handle unhandled promise rejections
