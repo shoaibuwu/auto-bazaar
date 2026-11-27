@@ -447,7 +447,7 @@ export async function streamChatWithMcp({ query, conversationHistory = [], onEve
         ...sanitizedHistory,
         {
           role: "user",
-          content: `User asked: "${query}"\n\nVerified AutoBazaar MCP Data (${fastPlan.name}):\n${toolText}\n\nGive a helpful, concise reply grounded strictly in the data above.`,
+          content: `User question: "${query}"\n\nVerified AutoBazaar MCP Data (${fastPlan.name}):\n${toolText}\n\nAnswer the user directly and naturally in 2-3 short sentences or clean bullet points using ONLY the verified facts above. Never mention "the data" or "here is a reply".`,
         },
       ];
 

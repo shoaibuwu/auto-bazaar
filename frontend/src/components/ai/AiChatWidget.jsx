@@ -37,10 +37,9 @@ function resolveCarImage(images) {
 }
 
 /**
- * Lightweight inline markdown renderer for **bold** and `code` spans inside chat bubbles.
+ * Lightweight markdown renderer supporting bullet lists (* / -), **bold**, and `code` spans.
  */
-function FormattedMessage({ text }) {
-  if (!text) return null;
+function FormattedInline({ text }) {
   const parts = String(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return (
     <>
@@ -65,6 +64,36 @@ function FormattedMessage({ text }) {
         return <React.Fragment key={idx}>{part}</React.Fragment>;
       })}
     </>
+  );
+}
+
+function FormattedMessage({ text }) {
+  if (!text) return null;
+  const lines = String(text).split("\n");
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        const bulletMatch = line.match(/^\s*[*\-•]\s+(.+)$/);
+        if (bulletMatch) {
+          return (
+            <div key={i} className="flex items-start gap-2 pl-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
+              <span className="flex-1">
+                <FormattedInline text={bulletMatch[1]} />
+              </span>
+            </div>
+          );
+        }
+        if (!line.trim()) {
+          return <div key={i} className="h-1" />;
+        }
+        return (
+          <p key={i} className="leading-relaxed">
+            <FormattedInline text={line} />
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
@@ -232,27 +261,27 @@ export default function AiChatWidget() {
           }`}
         >
           {/* Cockpit Header */}
-          <div className="px-4 py-3 bg-gradient-to-r from-[#4338CA] via-[#4F46E5] to-[#6366F1] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-[#4338CA] via-[#4F46E5] to-[#6366F1] text-white flex items-center justify-between gap-2 shrink-0 relative overflow-hidden">
             <div className="absolute -right-8 -top-8 w-28 h-28 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-2.5 relative z-10">
-              <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner">
+            <div className="flex items-center gap-2.5 min-w-0 relative z-10">
+              <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner shrink-0">
                 <span className="material-symbols-outlined text-xl">bolt</span>
               </div>
-              <div className="text-left">
+              <div className="text-left min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold tracking-tight">AutoBazaar AI</h3>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-400/20 border border-emerald-300/30 text-emerald-100 text-[9px] font-bold uppercase tracking-wider">
+                  <h3 className="text-sm font-bold tracking-tight truncate">AutoBazaar AI</h3>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-400/20 border border-emerald-300/30 text-emerald-100 text-[9px] font-bold uppercase tracking-wider shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
                     MCP Fast
                   </span>
                 </div>
-                <p className="text-[11px] text-indigo-100/90 leading-tight">
-                  Live MongoDB Tools • Real-time Streaming
+                <p className="text-[11px] text-indigo-100/90 leading-tight truncate">
+                  Live MongoDB • Streaming
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 relative z-10">
+            <div className="flex items-center gap-1 shrink-0 relative z-10">
               {mcpTools.length > 0 && (
                 <button
                   type="button"
@@ -301,7 +330,7 @@ export default function AiChatWidget() {
 
           {/* Live MCP Tools Inspector */}
           {showToolsPanel && mcpTools.length > 0 && (
-            <div className="px-3.5 py-2.5 bg-indigo-50/70 dark:bg-[#172033] border-b border-indigo-500/15 max-h-40 overflow-y-auto text-left">
+            <div className="px-3.5 py-2.5 bg-indigo-50/70 dark:bg-[#172033] border-b border-indigo-500/15 max-h-40 overflow-y-auto shrink-0 text-left">
               <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 mb-1.5 flex items-center gap-1">
                 <span className="material-symbols-outlined text-xs">dns</span>
                 AutoBazaar MCP Server Tools ({mcpTools.length})
@@ -321,7 +350,7 @@ export default function AiChatWidget() {
           )}
 
           {/* Conversation Feed */}
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 text-left">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3.5 text-left">
             {messages.length === 0 && (
               <div className="py-3 px-1 flex flex-col items-center text-center gap-3">
                 <div className="relative">
@@ -432,17 +461,16 @@ export default function AiChatWidget() {
                           <p className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
                             {formatPKR(car.price)}
                           </p>
-                          <div className="flex flex-wrap items-center gap-1 mt-1 text-[10px] text-on-surface-variant dark:text-slate-400">
-                            <span>{car.city || "Pakistan"}</span>
-                            <span>•</span>
-                            <span>{car.year}</span>
-                            <span>•</span>
-                            <span className="capitalize">{car.transmission}</span>
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 text-[10px] text-on-surface-variant dark:text-slate-400">
+                            <span className="whitespace-nowrap">{car.city || "Pakistan"}</span>
+                            <span aria-hidden="true">•</span>
+                            <span className="whitespace-nowrap">{car.year}</span>
+                            <span aria-hidden="true">•</span>
+                            <span className="capitalize whitespace-nowrap">{car.transmission}</span>
                             {typeof car.mileage === "number" && (
-                              <>
-                                <span>•</span>
-                                <span>{car.mileage.toLocaleString()} km</span>
-                              </>
+                              <span className="whitespace-nowrap">
+                                • {car.mileage.toLocaleString()} km
+                              </span>
                             )}
                           </div>
                         </div>
@@ -463,9 +491,9 @@ export default function AiChatWidget() {
                 {/* Chat Bubble */}
                 {(msg.content || msg.role === "user") && (
                   <div
-                    className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed whitespace-pre-line ${
+                    className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-gradient-to-r from-[#4F46E5] to-[#6366F1] text-white rounded-br-sm shadow-sm"
+                        ? "whitespace-pre-line bg-gradient-to-r from-[#4F46E5] to-[#6366F1] text-white rounded-br-sm shadow-sm"
                         : "bg-surface-container-low dark:bg-[#172033] text-on-surface dark:text-slate-100 border border-outline-variant/30 dark:border-[#26324B] rounded-bl-sm"
                     }`}
                   >
@@ -504,6 +532,8 @@ export default function AiChatWidget() {
           >
             <input
               ref={inputRef}
+              id="mcp-chat-input"
+              name="mcpQuery"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
